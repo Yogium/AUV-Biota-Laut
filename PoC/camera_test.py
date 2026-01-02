@@ -1,6 +1,7 @@
 import cv2
 from datetime import datetime
 import time
+import os
 
 def image_cap(out_path = None):
     print("Testing camera access...")
@@ -29,6 +30,27 @@ def image_cap(out_path = None):
     cap.release()
     return None
 
+def find_cameras():
+    """Scan for available cameras"""
+    print("Scanning for available cameras...")
+    available_cameras = []
+    for index in range(10):
+        cap = cv2.VideoCapture(index)
+        if cap.isOpened():
+            available_cameras.append(index)
+            print(f"Camera found at index {index}")
+            cap.release()
+    if not available_cameras:
+        print("No cameras found")
+    return available_cameras
+
 if __name__ == "__main__":
-    result = image_cap()
-    print(f"Image saved: {result}")
+    # First, find available cameras
+    cameras = find_cameras()
+    
+    if cameras:
+        # Use the first available camera
+        result = image_cap()
+        print(f"Image saved: {result}")
+    else:
+        print("No cameras available to capture from")
