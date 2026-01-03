@@ -13,6 +13,27 @@ T_MIN = 0.35       # minimum transmission for dehazing
 
 import matplotlib.pyplot as plt
 
+import time  # <-- tambahkan di atas
+
+def process_and_save(img_path, save_folder):
+    os.makedirs(save_folder, exist_ok=True)
+    img = cv2.imread(img_path)
+
+    start_time = time.time()          # <--- mulai hitung
+    enhanced = enhance_underwater(img)
+    end_time = time.time()            # <--- selesai
+
+    base_name = os.path.basename(img_path)
+    save_name = f"enhanced_{base_name}"
+    save_path = os.path.join(save_folder, save_name)
+    cv2.imwrite(save_path, enhanced)
+
+    print(f"[INFO] Saved enhanced image: {save_name}")
+    print(f"[INFO] Processing time: {end_time - start_time:.2f} detik")  # durasi
+
+    return save_path
+
+
 
 # ------------------------------
 # Fungsi tampilkan histogram Red channel
@@ -153,7 +174,11 @@ def restore_red_adaptive(img,
     R_corr = R_f * (1.0 + k)
 
     R_corr = np.clip(R_corr, 0, 255).astype(np.uint8)
-
+    
+    mean_R_after = np.mean(R_corr)
+    if verbose:
+        print(f"[RED] mean_R after correction = {mean_R_after:.2f}")
+    
     return cv2.merge([B, G, R_corr])
 
 
@@ -252,6 +277,7 @@ def process_and_save(img_path, save_folder):
 
 def process_folder(input_folder, save_folder, exts=(".png", ".jpg", ".jpeg")):
     os.makedirs(save_folder, exist_ok=True)
+    total_start = time.time()  # waktu total untuk semua gambar
 
     for fname in sorted(os.listdir(input_folder)):
         if fname.lower().endswith(exts):
@@ -262,17 +288,22 @@ def process_folder(input_folder, save_folder, exts=(".png", ".jpg", ".jpeg")):
                 print(f"[WARNING] Gagal baca: {fname}")
                 continue
 
+            start_time = time.time()
             enhanced = enhance_underwater(img)
-            save_path = os.path.join(save_folder, f"daffa{fname}")   #================-----------===========
-            cv2.imwrite(save_path, enhanced)
+            end_time = time.time()
 
-            print(f"[INFO] Processed: {fname}")  
+            save_path = os.path.join(save_folder, f"6wb'_rr'_cl1_dh_sh02_gm11_{fname}") 
+            cv2.imwrite(save_path, enhanced)
+            print(f"[INFO] Processed: {fname} in {end_time - start_time:.2f} detik")
+
+    total_end = time.time()
+    print(f"[INFO] Total processing time: {total_end - total_start:.2f} detik")
             
 
 # ------------------------------
 # Contoh penggunaan
 input_folder = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal3\testing_opencvgacor"
-save_folder  = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal3\testing_opencvgacor\ngotret2_nabiel"
+save_folder  = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal3\testing_opencvgacor\ngotret_nabiel"
 
 #process_and_save(input_folder, save_folder)
 process_folder(input_folder, save_folder)

@@ -7,14 +7,14 @@ from datetime import datetime
 # Load model
 # =========================
 model = YOLO(
-    r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal4\best.pt"
+    r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\yolo11s\best.pt"
 )
 
 # =========================
 # Folder input & output
 # =========================
-input_folder = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\datamentah"
-output_folder = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\output_datamentah"
+input_folder = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\databersih"
+output_folder = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\outputs_databersih"
 
 os.makedirs(output_folder, exist_ok=True)
 
