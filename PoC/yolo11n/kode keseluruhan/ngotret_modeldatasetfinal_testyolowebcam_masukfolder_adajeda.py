@@ -8,6 +8,197 @@ from ultralytics.utils.plotting import Annotator
 
 # ---------------- CONFIG ----------------
 MODEL_PATH = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\yolo11s\best.pt"
+SAVE_FOLDER = r"D:\POC\POCB"
+CSV_FILE = os.path.join(SAVE_FOLDER, "log_objects.csv")
+
+INTERVAL = 1.5        # detik
+AUV_SPEED = 0.5       # m/s
+
+VEHICLE_ID = "auv01"
+MISSION_ID = "ms03"
+# ----------------------------------------
+
+def generate_filename(counter):
+    return f"{VEHICLE_ID}_{MISSION_ID}_img{counter:05d}.jpg"
+
+# ===== Dummy Location Model =====
+METER_TO_DEG = 1 / 111_111
+
+def update_position(pos, dt):
+    distance = AUV_SPEED * dt
+    pos[0] += distance * METER_TO_DEG
+    pos[1] += 0.3 * distance * METER_TO_DEG
+    pos[2] += 0.05 * dt
+    return pos
+# ================================
+
+# ===== Mapping warna (BGR) =====
+COLOR_MAP = {
+    (0,0): (32, 165, 218),    # ikan yakin - kuning tua
+    (0,1): (0, 215, 255),     # ikan tidak yakin - kuning muda, tetap kuning tapi kontras
+    (1,0): (150, 0, 0),       # coral yakin - biru tua
+    (1,1): (230, 216, 173),   # coral tidak yakin - biru muda
+    (2,0): (0, 0, 150),       # seagrass yakin - merah tua
+    (2,1): (180, 180, 255),   # seagrass tidak yakin - merah muda
+    (3,0): (0, 100, 0),       # human yakin - hijau tua
+    (3,1): (144, 238, 144),   # human tidak yakin - hijau muda
+    (4,0): (80, 80, 80),      # other yakin - abu tua
+    (4,1): (200, 200, 200),   # other tidak yakin - abu muda
+}
+
+def main():
+    os.makedirs(SAVE_FOLDER, exist_ok=True)
+
+    if not os.path.exists(CSV_FILE):
+        with open(CSV_FILE, "w", newline="") as f:
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow([
+                "ID", "timestamp", "lat", "lon", "depth",
+                "label", "confidence", "filename"
+            ])
+
+    model = YOLO(MODEL_PATH)
+    cap = cv2.VideoCapture(0)
+
+    image_counter = 1
+    start_time = time.time()
+    last_snapshot_time = time.time()
+    position = np.array([-6.8900, 107.6100, 5.0], dtype=np.float32)
+
+    try:
+        while True:
+            snapshot_time = time.time()
+            dt = snapshot_time - last_snapshot_time
+            last_snapshot_time = snapshot_time
+
+            # 1. Ambil snapshot
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # 2. YOLO + anotasi
+            results = model(frame)
+            annotated = frame.copy()
+            annotator = Annotator(annotated)
+
+            csv_rows = []
+            boxes = results[0].boxes
+
+            # === COUNTER PER LABEL (FIX) ===
+            label_counter = {}
+            # ===============================
+
+            if boxes is not None and len(boxes) > 0:
+                for box in boxes:
+                    cls = int(box.cls[0])
+                    conf = float(box.conf[0])
+
+                    # Counter per label
+                    if cls not in label_counter:
+                        label_counter[cls] = 1
+                    else:
+                        label_counter[cls] += 1
+
+                    obj_counter = label_counter[cls]
+                    flag = 1 if conf < 0.5 else 0
+
+                    unique_id = f"{flag}{cls}{image_counter:05d}{obj_counter:03d}"
+
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    
+                    # ===== PILIH WARNA DARI COLOR_MAP =====
+                    color = COLOR_MAP.get((cls, flag), (255, 255, 255))  # default putih jika label tidak ada
+                    annotator.box_label(
+                        [x1, y1, x2, y2],
+                        f"ID:{unique_id}",
+                        color=color
+                    )
+
+                    csv_rows.append([
+                        unique_id,
+                        "",
+                        float(position[0]),
+                        float(position[1]),
+                        float(position[2]),
+                        str(cls),
+                        float(conf),
+                        generate_filename(image_counter)
+                    ])
+
+            annotated = annotator.result()
+
+            # 3. Simpan gambar
+            filename = generate_filename(image_counter)
+            cv2.imwrite(os.path.join(SAVE_FOLDER, filename), annotated)
+
+            # 4. Update posisi
+            position = update_position(position, dt)
+
+            # 5. Hitung t_global
+            t_global = time.time() - start_time
+
+            # 6. Update timestamp CSV
+            for row in csv_rows:
+                row[1] = t_global
+
+            # 7. Tulis CSV
+            if csv_rows:
+                with open(CSV_FILE, "a", newline="") as f:
+                    writer = csv.writer(f, delimiter=";")
+                    writer.writerows(csv_rows)
+
+            # 8. Hitung proc_time (SAMPAI AKHIR)
+            finish_time = time.time()
+            proc_time = finish_time - snapshot_time
+
+            # 9. Log terminal
+            print(
+                f"[SNAPSHOT] img={filename} | "
+                f"proc_time={proc_time:.3f}s | "
+                f"t_global={t_global:.2f}s | "
+                f"lat={position[0]:.6f}, "
+                f"lon={position[1]:.6f}, "
+                f"depth={position[2]:.2f}m"
+            )
+
+            image_counter += 1
+
+            # 10. Jaga interval
+            time.sleep(max(0, INTERVAL - proc_time))
+
+    except KeyboardInterrupt:
+        print("Stop requested by user")
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        print("Camera released, program exited cleanly")
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+"""
+====
+ini kode yang udah sesuai warnanya
+
+
+"""
+
+"""
+====================================================================================================
+ini kode yang udah csv juga paling update yaitu waktu proc nya setelah csv
+from ultralytics import YOLO
+import cv2
+import os
+import time
+import numpy as np
+import csv
+from ultralytics.utils.plotting import Annotator
+
+# ---------------- CONFIG ----------------
+MODEL_PATH = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\yolo11s\best.pt"
 SAVE_FOLDER = r"D:\POC"
 CSV_FILE = os.path.join(SAVE_FOLDER, "log_objects.csv")
 
@@ -99,11 +290,11 @@ def main():
                     csv_rows.append([
                         unique_id,
                         "",
-                        position[0],
-                        position[1],
-                        position[2],
+                        float(position[0]),
+                        float(position[1]),
+                        float(position[2]),
                         str(cls),
-                        conf,
+                        float(conf),
                         generate_filename(image_counter)
                     ])
 
@@ -146,157 +337,6 @@ def main():
             image_counter += 1
 
             # 10. Jaga interval
-            time.sleep(max(0, INTERVAL - proc_time))
-
-    except KeyboardInterrupt:
-        print("Stop requested by user")
-    finally:
-        cap.release()
-        cv2.destroyAllWindows()
-        print("Camera released, program exited cleanly")
-
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-"""
-====================================================================================================
-ini kode yang udah csv juga paling update yaitu waktu proc nya setelah csv
-from ultralytics import YOLO
-import cv2
-import os
-import time
-import numpy as np
-import csv
-from ultralytics.utils.plotting import Annotator
-
-# ---------------- CONFIG ----------------
-MODEL_PATH = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\yolo11s\best.pt"
-SAVE_FOLDER = r"D:\POC"
-CSV_FILE = os.path.join(SAVE_FOLDER, "log_objects.csv")
-
-INTERVAL = 1.5        # detik
-AUV_SPEED = 0.5       # m/s
-
-VEHICLE_ID = "auv01"
-MISSION_ID = "ms03"
-# ----------------------------------------
-
-def generate_filename(counter):
-    return f"{VEHICLE_ID}_{MISSION_ID}_img{counter:05d}.jpg"
-
-# ===== Dummy Location Model =====
-METER_TO_DEG = 1 / 111_111
-
-def update_position(pos, dt):
-    distance = AUV_SPEED * dt
-    pos[0] += distance * METER_TO_DEG
-    pos[1] += 0.3 * distance * METER_TO_DEG
-    pos[2] += 0.05 * dt
-    return pos
-# ================================
-
-def main():
-    os.makedirs(SAVE_FOLDER, exist_ok=True)
-
-    if not os.path.exists(CSV_FILE):
-        with open(CSV_FILE, "w", newline="") as f:
-            writer = csv.writer(f, delimiter=";")
-            writer.writerow(["ID", "timestamp", "lat", "lon", "depth", "label", "confidence", "filename"])
-
-    model = YOLO(MODEL_PATH)
-    cap = cv2.VideoCapture(0)
-
-    image_counter = 1
-    start_time = time.time()
-    position = np.array([-6.8900, 107.6100, 5.0], dtype=np.float32)
-    last_snapshot_time = time.time()
-
-    try:
-        while True:
-            snapshot_time = time.time()
-            dt = snapshot_time - last_snapshot_time
-            last_snapshot_time = snapshot_time
-
-            # 1. Ambil snapshot
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            # 2. YOLO + anotasi
-            results = model(frame)
-            annotated = frame.copy()
-            annotator = Annotator(annotated)
-
-            csv_rows = []
-            boxes = results[0].boxes
-
-            if boxes is not None and len(boxes) > 0:
-                for i, box in enumerate(boxes):
-                    cls = int(box.cls[0])
-                    conf = float(box.conf[0])
-
-                    flag = 1 if conf < 0.5 else 0
-                    obj_counter = i + 1
-                    unique_id = f"{flag}{cls}{image_counter:05d}{obj_counter:03d}"
-
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    annotator.box_label([x1, y1, x2, y2], f"ID:{unique_id}")
-
-                    csv_rows.append([
-                        str(unique_id),
-                        "",
-                        position[0],
-                        position[1],
-                        position[2],
-                        str(cls),
-                        conf,
-                        generate_filename(image_counter)
-                    ])
-
-            annotated = annotator.result()
-
-            # 3. Simpan gambar
-            filename = generate_filename(image_counter)
-            cv2.imwrite(os.path.join(SAVE_FOLDER, filename), annotated)
-
-            # 4. Update posisi
-            position = update_position(position, dt)
-
-            # 5. Hitung t_global (proc_time BELUM)
-            t_global = time.time() - start_time
-
-            # 6. Update timestamp CSV
-            for row in csv_rows:
-                row[1] = t_global
-
-            # 7. Tulis CSV
-            if csv_rows:
-                with open(CSV_FILE, "a", newline="") as f:
-                    writer = csv.writer(f, delimiter=";")
-                    writer.writerows(csv_rows)
-
-            # ==== PERUBAHAN INTI ADA DI SINI ====
-            finish_time = time.time()
-            proc_time = finish_time - snapshot_time
-            # ===================================
-
-            # 8. Print log terminal
-            print(
-                f"[SNAPSHOT] img={filename} | "
-                f"proc_time={proc_time:.3f}s | "
-                f"t_global={t_global:.2f}s | "
-                f"lat={position[0]:.6f}, "
-                f"lon={position[1]:.6f}, "
-                f"depth={position[2]:.2f}m"
-            )
-
-            image_counter += 1
-
-            # 9. Jaga interval
             time.sleep(max(0, INTERVAL - proc_time))
 
     except KeyboardInterrupt:

@@ -273,9 +273,9 @@ def enhance_underwater(img):
     #show_red_histogram(out, title="Red Channel sebelum Adaptive Restoration")
     out = restore_red_adaptive(out)
     #show_red_histogram(out, title="Red Channel after Adaptive Restoration A")
-    show_L_histogram(out, title="L Channel sebelum CLAHE")
+    #show_L_histogram(out, title="L Channel sebelum CLAHE")
     out = clahe_enhance(out)
-    show_L_histogram(out, title="L Channel setelah CLAHE")
+    #show_L_histogram(out, title="L Channel setelah CLAHE")
     out = dehaze(out)
     out = sharpen(out)
     out = gamma_correct(out)
@@ -325,7 +325,7 @@ def process_folder(input_folder, save_folder, exts=(".png", ".jpg", ".jpeg")):
 # ------------------------------
 # Contoh penggunaan
 input_folder = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\datamentah"
-save_folder  = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\ngotret aja sih"
+save_folder  = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\databersih"
 
 #process_and_save(input_folder, save_folder)
 process_folder(input_folder, save_folder)
