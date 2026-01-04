@@ -4,10 +4,10 @@ import os
 from datetime import datetime
 
 # Load model
-model = YOLO(r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\best.pt")
+model = YOLO(r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\yolo11s\best.pt")
 
 # Path video input dan folder output
-video_path = r"D:\processed_partisi_video\GH023425 Pt1 DIP1.avi"
+video_path = r"D:\processed_partisi_video\GL033425 Pt2 DIP1.avi"
 save_folder = r"D:\testyolovideobersih_masukfolder"
 os.makedirs(save_folder, exist_ok=True)
 
