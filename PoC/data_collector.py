@@ -3,6 +3,8 @@ import json
 import csv
 import threading
 import time
+import os
+import re
 from datetime import datetime
 
 class DataCollector:
@@ -72,8 +74,8 @@ class DataCollector:
             print(f"[{source_name}] Disconnected")
     
     def write_to_csv(self, interval=5):
-        """Periodically write unified data to CSV"""
-        first_write = True
+        """Periodically write unified data to CSV based on AUV and mission number"""
+        written_missions = set()
         
         while True:
             time.sleep(interval)
@@ -84,6 +86,25 @@ class DataCollector:
                 
                 # Write one row per provider (one row = one provider's latest data)
                 for provider_id, data in self.data_buffer.items():
+                    # Extract AUV and mission number from filename (format: AUV##, MS###, ######.jpg)
+                    filename = data.get('filename', '')
+                    auv_match = re.search(r'AUV(\d+)', filename)
+                    mission_match = re.search(r'MS(\d+)', filename)
+                    
+                    auv_number = auv_match.group(1) if auv_match else '01'
+                    mission_number = mission_match.group(1) if mission_match else '001'
+                    mission_file = f'AUV{auv_number}_MS{mission_number}_Data.csv'
+                    
+                    # Create unique identifier for this mission
+                    mission_id = f"AUV{auv_number}_MS{mission_number}"
+                    
+                    # Delete file if it's a new mission number
+                    if mission_id not in written_missions:
+                        if os.path.exists(mission_file):
+                            os.remove(mission_file)
+                            print(f"Deleted existing {mission_file}")
+                        written_missions.add(mission_id)
+                    
                     unified_row = {
                         'collection_timestamp': datetime.now().isoformat(),
                         'provider_id': provider_id,
@@ -98,18 +119,19 @@ class DataCollector:
                     }
                     
                     try:
-                        with open(self.output_file, 'a', newline='') as f:
+                        # Check if file exists to determine if we need to write header
+                        file_exists = os.path.exists(mission_file)
+                        with open(mission_file, 'a', newline='') as f:
                             writer = csv.DictWriter(f, fieldnames=self.fieldnames)
-                            if first_write:
+                            if not file_exists:
                                 writer.writeheader()
-                                first_write = False
                             writer.writerow(unified_row)
-                        print(f"Wrote row for {provider_id}")
+                        print(f"Wrote row for {provider_id} to {mission_file}")
                     except Exception as e:
                         print(f"Error writing to CSV: {e}")
 
 def main():
-    collector = DataCollector('unified_data.csv')
+    collector = DataCollector()
     
     # Start servers for each provider
     # You can add more providers by calling start_server with different ports
@@ -123,6 +145,7 @@ def main():
     
     print("Data collector started. Waiting for connections...")
     print("Provider ports: 5001, 5002, 5003")
+    print("Data will be saved to AUVXX_MSXXX_Data.csv files based on AUV and mission number")
     try:
         while True:
             time.sleep(1)

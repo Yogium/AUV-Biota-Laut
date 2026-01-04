@@ -2,7 +2,6 @@ import camera_test
 import cv2
 import os
 import time
-from datetime import datetime
 
 def setup_camera():
     """Find and initialize camera"""
@@ -45,6 +44,8 @@ def capture_images_loop(duration=None, interval=1.5):
     try:
         start_time = time.time()
         capture_count = 0
+        auv_number = "AUV01"
+        mission_number = "MS001"
         
         print(f"Starting image capture every {interval} seconds...")
         print("Press Ctrl+C to stop\n")
@@ -57,9 +58,9 @@ def capture_images_loop(duration=None, interval=1.5):
             
             ret, frame = cap.read()
             if ret:
-                # Generate filename with timestamp
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
-                filename = os.path.join(output_dir, f"image_{timestamp}.jpg")
+                # Generate filename with AUV, mission, and image number
+                capture_count += 1
+                filename = os.path.join(output_dir, f"{auv_number}_{mission_number}_{capture_count:06d}.jpg")
                 
                 # Save image
                 cv2.imwrite(filename, frame)

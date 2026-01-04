@@ -17,9 +17,13 @@ def send_data(port, provider_name):
         return
     
     counter = 0
+    mission_number = "MS001"
+    AUV_number = "AUV01"
     while True:
         try:
-            counter += 1
+            # Only increase image counter number 30% of the time
+            if random.random() < 0.3:
+                counter +=1
             data = {
                 'id': str(uuid.uuid4()),
                 'timestamp': time.time(),
@@ -28,12 +32,12 @@ def send_data(port, provider_name):
                 'depth': random.uniform(0, 20),  # meters
                 'label': random.choice(['Ikan', 'Terumbu Karang', 'Tanaman', 'Manusia', 'Other']),
                 'conf': round(random.uniform(0.5, 0.99), 2),  # confidence
-                'filename': f"{provider_name}_frame_{counter}.jpg"
+                'filename': f"{AUV_number}_{mission_number}_{counter}.jpg"
             }
             message = json.dumps(data) + '\n'
             sock.send(message.encode())
             print(f"{provider_name} sent: {data}")
-            time.sleep(2)
+            time.sleep(1.5)
         except Exception as e:
             print(f"Error in {provider_name}: {e}")
             break
