@@ -21,7 +21,7 @@ class DataCollector:
         def handle_connections():
             server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server.bind(('0.0.0.0', port))
+            server.bind(('localhost', port))
             server.listen(1)
             print(f"[{source_name}] Server listening on port {port}")
             

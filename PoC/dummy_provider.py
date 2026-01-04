@@ -6,7 +6,7 @@ import uuid
 
 def send_data(port, provider_name):
     """Simulates an AUV data provider that sends sensor readings"""
-    RASPPI_IP = '192.168.1.12'
+    RASPPI_IP = 'localhost'
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
