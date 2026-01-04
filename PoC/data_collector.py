@@ -5,6 +5,7 @@ import threading
 import time
 import os
 import re
+import encrypt_poc
 from datetime import datetime
 
 class DataCollector:
@@ -17,6 +18,9 @@ class DataCollector:
             'collection_timestamp', 'provider_id',
             'id', 'timestamp', 'lat', 'long', 'depth', 'label', 'conf', 'filename'
         ]
+        
+        # Initialize encryption key
+        self.encryption_key = self._initialize_encryption_key()
         
     def start_server(self, port, source_name):
         """Start a server on a specific port to receive data from a provider"""
@@ -42,6 +46,23 @@ class DataCollector:
         thread = threading.Thread(target=handle_connections, daemon=True)
         thread.start()
         self.servers[source_name] = thread
+    
+    def _initialize_encryption_key(self):
+        """Initialize encryption key - load existing or ask user to create new"""
+        if os.path.exists(encrypt_poc.KEY_FILE):
+            key = encrypt_poc.load_key()
+            print(f"[ENCRYPTION] Loaded existing key from {encrypt_poc.KEY_FILE}")
+            return key
+        else:
+            print(f"[ENCRYPTION] No key file found at {encrypt_poc.KEY_FILE}")
+            response = input("Do you want to generate a new encryption key? (yes/no): ").strip().lower()
+            if response in ['yes', 'y']:
+                key = encrypt_poc.generate_key()
+                print(f"[ENCRYPTION] New key generated and saved to {encrypt_poc.KEY_FILE}")
+                return key
+            else:
+                print("[WARNING] Encryption disabled - data will be saved unencrypted")
+                return None
     
     def receive_data(self, conn, source_name):
         """Receive data from a provider"""
@@ -122,11 +143,22 @@ class DataCollector:
                         # Check if file exists to determine if we need to write header
                         file_exists = os.path.exists(mission_file)
                         with open(mission_file, 'a', newline='') as f:
-                            writer = csv.DictWriter(f, fieldnames=self.fieldnames)
                             if not file_exists:
-                                writer.writeheader()
-                            writer.writerow(unified_row)
-                        print(f"Wrote row for {provider_id} to {mission_file}")
+                                # Write header for encrypted format
+                                f.write('encrypted_data\n')
+                            
+                            # Convert row to JSON for encryption
+                            row_json = json.dumps(unified_row)
+                            
+                            # Encrypt the row if key is available
+                            if self.encryption_key:
+                                encrypted_row = encrypt_poc.encrypt_line(self.encryption_key, row_json)
+                                f.write(encrypted_row + '\n')
+                                print(f"Wrote encrypted row for {provider_id} to {mission_file}")
+                            else:
+                                # Write unencrypted JSON if no key
+                                f.write(row_json + '\n')
+                                print(f"Wrote unencrypted row for {provider_id} to {mission_file}")
                     except Exception as e:
                         print(f"Error writing to CSV: {e}")
 
@@ -146,6 +178,7 @@ def main():
     print("Data collector started. Waiting for connections...")
     print("Provider ports: 5001, 5002, 5003")
     print("Data will be saved to AUVXX_MSXXX_Data.csv files based on AUV and mission number")
+    print("=" * 60)
     try:
         while True:
             time.sleep(1)
