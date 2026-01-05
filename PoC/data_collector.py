@@ -7,6 +7,7 @@ import os
 import re
 import encrypt_poc
 from datetime import datetime
+from collections import deque
 
 class DataCollector:
     def __init__(self, output_file='unified_data.csv'):
@@ -83,8 +84,8 @@ class DataCollector:
                             data = json.loads(line)
                             with self.lock:
                                 if source_name not in self.data_buffer:
-                                    self.data_buffer[source_name] = {}
-                                self.data_buffer[source_name] = data
+                                    self.data_buffer[source_name] = deque(maxlen=100)  # Store up to 100 entries
+                                self.data_buffer[source_name].append(data)
                                 print(f"[{source_name}] Received: {data}")
                         except json.JSONDecodeError as e:
                             print(f"[{source_name}] JSON error: {e}")
@@ -105,62 +106,64 @@ class DataCollector:
                 if not self.data_buffer:
                     continue
                 
-                # Write one row per provider (one row = one provider's latest data)
-                for provider_id, data in self.data_buffer.items():
-                    # Extract AUV and mission number from filename (format: AUV##, MS###, ######.jpg)
-                    filename = data.get('filename', '')
-                    auv_match = re.search(r'AUV(\d+)', filename)
-                    mission_match = re.search(r'MS(\d+)', filename)
-                    
-                    auv_number = auv_match.group(1) if auv_match else '01'
-                    mission_number = mission_match.group(1) if mission_match else '001'
-                    mission_file = f'AUV{auv_number}_MS{mission_number}_Data.csv'
-                    
-                    # Create unique identifier for this mission
-                    mission_id = f"AUV{auv_number}_MS{mission_number}"
-                    
-                    # Delete file if it's a new mission number
-                    if mission_id not in written_missions:
-                        if os.path.exists(mission_file):
-                            os.remove(mission_file)
-                            print(f"Deleted existing {mission_file}")
-                        written_missions.add(mission_id)
-                    
-                    unified_row = {
-                        'collection_timestamp': datetime.now().isoformat(),
-                        'provider_id': provider_id,
-                        'id': data.get('id', ''),
-                        'timestamp': data.get('timestamp', ''),
-                        'lat': data.get('lat', ''),
-                        'long': data.get('long', ''),
-                        'depth': data.get('depth', ''),
-                        'label': data.get('label', ''),
-                        'conf': data.get('conf', ''),
-                        'filename': data.get('filename', '')
-                    }
-                    
-                    try:
-                        # Check if file exists to determine if we need to write header
-                        file_exists = os.path.exists(mission_file)
-                        with open(mission_file, 'a', newline='') as f:
-                            if not file_exists:
-                                # Write header for encrypted format
-                                f.write('encrypted_data\n')
-                            
-                            # Convert row to JSON for encryption
-                            row_json = json.dumps(unified_row)
-                            
-                            # Encrypt the row if key is available
-                            if self.encryption_key:
-                                encrypted_row = encrypt_poc.encrypt_line(self.encryption_key, row_json)
-                                f.write(encrypted_row + '\n')
-                                print(f"Wrote encrypted row for {provider_id} to {mission_file}")
-                            else:
-                                # Write unencrypted JSON if no key
-                                f.write(row_json + '\n')
-                                print(f"Wrote unencrypted row for {provider_id} to {mission_file}")
-                    except Exception as e:
-                        print(f"Error writing to CSV: {e}")
+                # Write all queued data from each provider
+                for provider_id, data_queue in self.data_buffer.items():
+                    while data_queue:
+                        data = data_queue.popleft()
+                        # Extract AUV and mission number from filename (format: AUV##, MS###, ######.jpg)
+                        filename = data.get('filename', '')
+                        auv_match = re.search(r'AUV(\d+)', filename)
+                        mission_match = re.search(r'MS(\d+)', filename)
+                        
+                        auv_number = auv_match.group(1) if auv_match else '01'
+                        mission_number = mission_match.group(1) if mission_match else '001'
+                        mission_file = f'AUV{auv_number}_MS{mission_number}_Data.csv'
+                        
+                        # Create unique identifier for this mission
+                        mission_id = f"AUV{auv_number}_MS{mission_number}"
+                        
+                        # Delete file if it's a new mission number
+                        if mission_id not in written_missions:
+                            if os.path.exists(mission_file):
+                                os.remove(mission_file)
+                                print(f"Deleted existing {mission_file}")
+                            written_missions.add(mission_id)
+                        
+                        unified_row = {
+                            'collection_timestamp': datetime.now().isoformat(),
+                            'provider_id': provider_id,
+                            'id': data.get('id', ''),
+                            'timestamp': data.get('timestamp', ''),
+                            'lat': data.get('lat', ''),
+                            'long': data.get('long', ''),
+                            'depth': data.get('depth', ''),
+                            'label': data.get('label', ''),
+                            'conf': data.get('conf', ''),
+                            'filename': data.get('filename', '')
+                        }
+                        
+                        try:
+                            # Check if file exists to determine if we need to write header
+                            file_exists = os.path.exists(mission_file)
+                            with open(mission_file, 'a', newline='') as f:
+                                if not file_exists:
+                                    # Write header for encrypted format
+                                    f.write('encrypted_data\n')
+                                
+                                # Convert row to JSON for encryption
+                                row_json = json.dumps(unified_row)
+                                
+                                # Encrypt the row if key is available
+                                if self.encryption_key:
+                                    encrypted_row = encrypt_poc.encrypt_line(self.encryption_key, row_json)
+                                    f.write(encrypted_row + '\n')
+                                    print(f"Wrote encrypted row for {provider_id} to {mission_file}")
+                                else:
+                                    # Write unencrypted JSON if no key
+                                    f.write(row_json + '\n')
+                                    print(f"Wrote unencrypted row for {provider_id} to {mission_file}")
+                        except Exception as e:
+                            print(f"Error writing to CSV: {e}")
 
 def main():
     collector = DataCollector()
@@ -172,7 +175,7 @@ def main():
     collector.start_server(5003, 'Camera_3')
     
     # Start CSV writer thread
-    csv_thread = threading.Thread(target=collector.write_to_csv, args=(5,), daemon=True)
+    csv_thread = threading.Thread(target=collector.write_to_csv, args=(3,), daemon=True)
     csv_thread.start()
     
     print("Data collector started. Waiting for connections...")
