@@ -36,20 +36,20 @@ def update_position(pos, dt):
 # flag 0 = yakin (tua), flag 1 = tidak yakin (muda)
 COLOR_MAP = {
     (0,0): (32, 165, 218),   # ikan yakin - kuning tua
-    (0,1): (0, 215, 255),  # ikan tidak yakin - kuning muda tetap kuning tapi kontras
+    (0,1): (0, 0, 255),  # ikan tidak yakin - kuning muda tetap kuning tapi kontras
 
 
     (1,0): (150, 0, 0),      # coral yakin - biru tua
-    (1,1): (230, 216, 173),  # coral tidak yakin - biru muda
+    (1,1): (0, 0, 255),  # coral tidak yakin - biru muda
 
-    (2,0): (0, 0, 150),      # seagrass yakin - merah tua
-    (2,1): (180, 180, 255),  # seagrass tidak yakin - merah muda
+    (2,0): (255, 0, 255),      # seagrass yakin - merah tua
+    (2,1): (0, 0, 255),  # seagrass tidak yakin - merah muda
 
     (3,0): (0, 100, 0),      # human yakin - hijau tua
-    (3,1): (144, 238, 144),  # human tidak yakin - hijau muda
+    (3,1): (0, 0, 255),  # human tidak yakin - hijau muda
 
     (4,0): (80, 80, 80),     # other yakin - abu tua
-    (4,1): (200, 200, 200),  # other tidak yakin - abu muda
+    (4,1): (0, 0, 255),  # other tidak yakin - abu muda
 }
 
 
