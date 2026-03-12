@@ -2,3 +2,4 @@
 *.img
 *.key
 *.out
+.vscode
