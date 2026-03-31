@@ -8,6 +8,7 @@
 //class for biota_laut table
 class DataBiota{
     private:
+    //setting a timestamp
         std::string get_iso8601_timestamp(){
             auto now = std::chrono::system_clock::now();
             std::time_t t = std::chrono::system_clock::to_time_t(now);
@@ -34,6 +35,7 @@ class DataBiota{
     }
 };
 
+// callback function for sqlite database
 static int callback(void *NotUsed,  int argc, char **argv, char **azColName){
     for(int i=0;i<argc; i++){
         std::cout << azColName[i] << " = " << (argv[i] ? argv[i] : "NULL") << std::endl;
@@ -42,19 +44,52 @@ static int callback(void *NotUsed,  int argc, char **argv, char **azColName){
     return 0;
 }
 
-int dbInit(int rc, sqlite3 *&db, char*errMsg){
+// function to initialize and open database
+int dbInit(sqlite3 *&db, const std::string &passwd){
     //open database file
-    rc = sqlite3_open("biota.db", &db);
+    int rc = sqlite3_open("biota_encrypted.db", &db);
     if(rc){
         std::cerr << "error opening database: " << sqlite3_errmsg16(db) << std::endl;
         return (-1);
     }
-    else{
-        std::cout << "Database successfully opened!\n";
+    std::cout << "Database successfully opened!\n";
+
+    //set encryption key
+    std::string pragma = "PRAGMA key = '" + passwd + "';";
+    char *errMsg = nullptr;
+    rc = sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, &errMsg);
+    if(rc != SQLITE_OK){
+        std::cerr << "Error setting encryption key: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+        sqlite3_close(db);
+        return (-1);
+    }
+    std::cout << "Database encrypted!\n";
+
+    //ensure table exists
+    const char *createTableSQL = 
+        "CREATE TABLE IF NOT EXISTS biota_laut("
+        "id INTEGER PRIMARY KEY, "
+        "time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+        "latitude DOUBLE NOT NULL, "
+        "longitude DOUBLE NOT NULL, "
+        "depth FLOAT NOT NULL, "
+        "label TEXT NOT NULL, "
+        "confidence FLOAT NOT NULL, "
+        "filename TEXT NOT NULL); ";
+
+    rc = sqlite3_exec(db, createTableSQL, nullptr, nullptr, &errMsg);
+    if(rc != SQLITE_OK){
+        std::cerr << "Error creating table: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+        sqlite3_close(db);
+        return (-1);
     }
     return 0;
 }
 
+
+// function to add data to database
 void addData(sqlite3* db, const DataBiota& data){
     const char* sql = "INSERT INTO biota_laut (id, time, latitude, longitude, depth, label, confidence, filename) "
                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -81,12 +116,15 @@ void addData(sqlite3* db, const DataBiota& data){
     sqlite3_finalize(stmt);
 }
 
+//main function for testing
 int main(){
     sqlite3 *db;
     char* errMsg;
     int rc;
+    std::string pwd = "test_pwd";
+    std::string wrongPwd = "wrong_pwd";
 
-    dbInit(rc, db, errMsg);
+    dbInit(db, pwd);
 
     // Create sample DataBiota objects
     DataBiota biota1(1001234001, 6.2088, 106.8450, 5.5f, "Fish", 0.95f, "fish_001.jpg");
