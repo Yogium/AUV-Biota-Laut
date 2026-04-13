@@ -4,6 +4,8 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <nlohmann/json.hpp>
+#include <fstream>
 
 //class for biota_laut table
 class DataBiota{
@@ -116,28 +118,83 @@ void addData(sqlite3* db, const DataBiota& data){
     sqlite3_finalize(stmt);
 }
 
-//main function for testing
-int main(){
-    sqlite3 *db;
-    char* errMsg;
-    int rc;
-    std::string pwd = "test_pwd";
-    std::string wrongPwd = "wrong_pwd";
+void exportJSON(sqlite3* db){
+    //declare array to hold records
+    nlohmann::json jsonArr = nlohmann::json::array();
+    
+    //declare sqlite statements
+    const char* sql = "SELECT id, time, latitude, longitude, depth, label, confidence, filename FROM biota_laut";
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    if(rc != SQLITE_OK){
+        std::cerr << "SQL Error preparing database for extractions: " << sqlite3_errmsg(db) << std::endl;
+        return;
+    }
 
-    dbInit(db, pwd);
+    //fetch each row and built a json object
+    while(sqlite3_step(stmt) == SQLITE_ROW){
+        nlohmann::json obj;
+        obj["id"] = sqlite3_column_int(stmt, 0);
+        obj["time"] = std::string((const char*)sqlite3_column_text(stmt, 1));
+        obj["latitude"] = sqlite3_column_double(stmt, 2);
+        obj["longitude"] = sqlite3_column_double(stmt, 3);
+        obj["depth"] = sqlite3_column_double(stmt, 4);
+        obj["label"] = std::string((const char*)sqlite3_column_text(stmt, 5));
+        obj["confidence"] = sqlite3_column_double(stmt, 6);
+        obj["filename"] = std::string((const char*)sqlite3_column_text(stmt, 7));
+        jsonArr.push_back(obj);
+    }
+    sqlite3_finalize(stmt);
 
-    // Create sample DataBiota objects
-    DataBiota biota1(1001234001, 6.2088, 106.8450, 5.5f, "Fish", 0.95f, "fish_001.jpg");
-    DataBiota biota2(1001234002, 6.2089, 106.8451, 6.0f, "Coral", 0.87f, "coral_001.jpg");
-    DataBiota biota3(1001234003, 6.2090, 106.8452, 7.2f, "Seagrass", 0.92f, "seagrass_001.jpg");
-
-    // Insert data into database
-    addData(db, biota1);
-    addData(db, biota2);
-    addData(db, biota3);
-
-    std::cout << "Data inserted\n";
-
-    sqlite3_close(db);
-    return 0;
+    //write to a file in same directory
+    std::ofstream file("biota_export.json");
+    if(!file.is_open()){
+        std::cerr << "Error opening file" << std::endl;
+        return;
+    }
+    file << jsonArr.dump(4); //4 space indentation
+    file.close();
+    std::cout << "data exported to biota_export.json" << std::endl;
 }
+
+//function to clean current database of all rows in table
+void cleanDb(sqlite3* db){
+    const char* sql = "DELETE FROM biota_laut;";
+    char* errmsg = nullptr;
+    int rc = sqlite3_exec(db, sql, nullptr, nullptr, &errmsg);
+    if(rc != SQLITE_OK){
+        std::cerr << "Error deleting all rows form table: " << errmsg << std::endl;
+        sqlite3_free(errmsg);
+        return;
+    }
+    std::cout << "All rows deleted from table!" << std::endl;
+}
+
+
+//main function for testing
+// int main(){
+//     sqlite3 *db;
+//     char* errMsg;
+//     int rc;
+//     std::string pwd = "test_pwd";
+//     std::string wrongPwd = "wrong_pwd";
+
+//     dbInit(db, pwd);
+
+//     // Create sample DataBiota objects
+//     DataBiota biota1(1001234001, 6.2088, 106.8450, 5.5f, "Fish", 0.95f, "fish_001.jpg");
+//     DataBiota biota2(1001234002, 6.2089, 106.8451, 6.0f, "Coral", 0.87f, "coral_001.jpg");
+//     DataBiota biota3(1001234003, 6.2090, 106.8452, 7.2f, "Seagrass", 0.92f, "seagrass_001.jpg");
+
+//     // Insert data into database
+//     addData(db, biota1);
+//     addData(db, biota2);
+//     addData(db, biota3);
+
+//     std::cout << "Data inserted\n";
+
+//     exportJSON(db);
+
+//     sqlite3_close(db);
+//     return 0;
+// }

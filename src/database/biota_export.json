@@ -1,0 +1,32 @@
+[
+    {
+        "confidence": 0.949999988079071,
+        "depth": 5.5,
+        "filename": "fish_001.jpg",
+        "id": 1001234001,
+        "label": "Fish",
+        "latitude": 6.2088,
+        "longitude": 106.845,
+        "time": "2026-03-31T16:59:37Z"
+    },
+    {
+        "confidence": 0.8700000047683716,
+        "depth": 6.0,
+        "filename": "coral_001.jpg",
+        "id": 1001234002,
+        "label": "Coral",
+        "latitude": 6.2089,
+        "longitude": 106.8451,
+        "time": "2026-03-31T16:59:37Z"
+    },
+    {
+        "confidence": 0.9200000166893005,
+        "depth": 7.199999809265137,
+        "filename": "seagrass_001.jpg",
+        "id": 1001234003,
+        "label": "Seagrass",
+        "latitude": 6.209,
+        "longitude": 106.8452,
+        "time": "2026-03-31T16:59:37Z"
+    }
+]
