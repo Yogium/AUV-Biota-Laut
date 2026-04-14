@@ -233,93 +233,6 @@ def dehaze(img):
     J = (img.astype(np.float32) - A) / t + A
     return np.clip(J, 0, 255).astype(np.uint8)
 
-#DCP CINA
-# ------------------------------
-# 1. Dark Channel
-def dark_channel_china2(img, patch_size=15):
-    """Hitung dark channel image BGR"""
-    b, g, r = cv2.split(img)
-    dc = cv2.min(cv2.min(r, g), b)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (patch_size, patch_size))
-    dark = cv2.erode(dc, kernel)
-    return dark
-
-# ------------------------------
-# 2. Atmospheric Light Estimation
-def estimate_atmospheric_china2(img, dark, top_percent=0.001):
-    """Estimasi atmospheric light (A)"""
-    h, w = dark.shape
-    num_pixels = h * w
-    num_top = max(int(num_pixels * top_percent), 1)
-    
-    dark_vec = dark.reshape(num_pixels, 1)
-    img_vec = img.reshape(num_pixels, 3)
-    
-    indices = np.argsort(dark_vec, axis=0)[-num_top:].flatten()
-    A = np.mean(img_vec[indices], axis=0)
-    return A
-
-# ------------------------------
-# 3. Transmission Estimation
-def transmission_map_china2(img, A, patch_size=15, omega=0.95):
-    """Estimasi transmission map sebelum refine"""
-    img3 = np.empty_like(img, dtype=np.float64)
-    for i in range(3):
-        img3[..., i] = img[..., i] / A[i]
-    t = 1 - omega * dark_channel_china2(img3, patch_size)
-    return t
-
-# ------------------------------
-# 4. Guided Filter for Transmission Refinement
-def guided_filter(I, p, r, eps):
-    """Guided filter grayscale"""
-    mean_I = cv2.boxFilter(I, cv2.CV_64F, (r, r))
-    mean_p = cv2.boxFilter(p, cv2.CV_64F, (r, r))
-    mean_Ip = cv2.boxFilter(I*p, cv2.CV_64F, (r, r))
-    cov_Ip = mean_Ip - mean_I * mean_p
-
-    mean_II = cv2.boxFilter(I*I, cv2.CV_64F, (r, r))
-    var_I = mean_II - mean_I * mean_I
-
-    a = cov_Ip / (var_I + eps)
-    b = mean_p - a * mean_I
-
-    mean_a = cv2.boxFilter(a, cv2.CV_64F, (r, r))
-    mean_b = cv2.boxFilter(b, cv2.CV_64F, (r, r))
-
-    q = mean_a * I + mean_b
-    return q
-
-def refine_trans_china2(img, t, r=60, eps=1e-4):
-    """Refine transmission map menggunakan guided filter"""
-    gray = cv2.cvtColor((img*255).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-    gray = gray.astype(np.float64) / 255.0
-    t_refined = guided_filter(gray, t, r, eps)
-    return t_refined
-
-# ------------------------------
-# 5. Recover Haze-Free Image
-def recover_image_china2(img, t, A, t0=0.1):
-    """Recover haze-free image"""
-    t = np.maximum(t, t0)
-    J = np.empty_like(img, dtype=np.float64)
-    for i in range(3):
-        J[..., i] = (img[..., i] - A[i]) / t + A[i]
-    J = np.clip(J, 0, 1)
-    return (J*255).astype(np.uint8)
-
-# ------------------------------
-# 6. Full Pipeline
-def dehaze_dcp_china2(img, patch_size=15, omega=0.95, refine=True):
-    """Full dehazing pipeline sesuai website China kedua"""
-    img_float = img.astype(np.float64) / 255.0
-    dark = dark_channel_china2(img_float, patch_size)
-    A = estimate_atmospheric_china2(img_float, dark)
-    t = transmission_map_china2(img_float, A, patch_size, omega)
-    if refine:
-        t = refine_trans_china2(img_float, t)
-    result = recover_image_china2(img_float, t, A)
-    return result
 
 
 # ------------------------------
@@ -414,8 +327,71 @@ def sharpen(img):
 
 
 # ------------------------------
+# 5B. Adaptive Sharpening (kernel dinamis berdasarkan grad_mean)
+
+def adaptive_sharpening(img, T_target=20, alpha=0.1, iter_max_base=2):
+
+    def grad_mean_metric(image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+        grad_mag = np.sqrt(grad_x**2 + grad_y**2)
+        return np.mean(grad_mag)
+
+    processed = img.copy()
+    grad_prev = grad_mean_metric(processed)
+    processed_last = processed.copy()
+
+    print(f"[ADAPT_SHARP] start grad_mean = {grad_prev:.2f}, target = {T_target}")
+
+    # menentukan jumlah iterasi maksimum secara adaptif
+    if grad_prev < 10:
+        iter_max = max(iter_max_base, 5)
+    elif grad_prev < 15:
+        iter_max = max(iter_max_base, 3)
+    else:
+        iter_max = iter_max_base
+
+    for i in range(iter_max):
+
+        # pilih kernel berdasarkan kondisi image
+        if grad_prev < 10:
+            kernel = np.array([[0, -0.18, 0],
+                               [-0.18, 1.72, -0.18],
+                               [0, -0.18, 0]])
+        elif grad_prev < 15:
+            kernel = np.array([[0, -0.12, 0],
+                               [-0.12, 1.48, -0.12],
+                               [0, -0.12, 0]])
+        else:
+            kernel = np.array([[0, -0.07, 0],
+                               [-0.07, 1.28, -0.07],
+                               [0, -0.07, 0]])
+
+        processed_new = cv2.filter2D(processed, -1, kernel)
+        grad_new = grad_mean_metric(processed_new)
+
+        if grad_prev >= T_target:
+            print(f"[ADAPT_SHARP] iter {i+1}: grad_mean {grad_prev:.2f} >= target, stop")
+            break
+
+        elif (grad_new - grad_prev) / (grad_prev + 1e-6) < alpha:
+            print(f"[ADAPT_SHARP] iter {i+1}: increase too small ({grad_prev:.2f}->{grad_new:.2f}), stop")
+            processed_last = processed_new
+            break
+
+        else:
+            print(f"[ADAPT_SHARP] iter {i+1}: {grad_prev:.2f} -> {grad_new:.2f}")
+            processed = processed_new
+            grad_prev = grad_new
+            processed_last = processed_new
+
+    return processed_last
+
+
+# ------------------------------
 # 6. Gamma Correction
-def gamma_correct(img, g=1.8):
+def gamma_correct(img, g=1.1):
     inv = 1.0 / g
     table = np.array([(i / 255.0) ** inv * 255 for i in range(256)]).astype("uint8")
     return cv2.LUT(img, table)
@@ -425,24 +401,25 @@ def gamma_correct(img, g=1.8):
 def enhance_underwater(img):
     out = img.copy()
     
-    
-    out = white_balance_adaptive(out)   #===========================--------------------===============
+    #out = white_balance(out)    #[wb']
+    out = white_balance_adaptive(out)   #[wb'']    ===========================--------------------===============
     
     #show_red_histogram(out, title="Red Channel sebelum Adaptive Restoration")
-    out = restore_red_adaptive(out)
+    #out = restore_red(out)      #[rr]
+    out = restore_red_adaptive(out)   #[rr']
     #show_red_histogram(out, title="Red Channel after Adaptive Restoration A")
     
     #show_L_histogram(out, title="L Channel sebelum CLAHE")
-    out = clahe_enhance(out)
+    out = clahe_enhance(out)      #[cl]
     #show_L_histogram(out, title="L Channel setelah CLAHE")
     
-    out = dehaze(out)
-    #out = dehaze_dcp(out)
-    #out = dehaze_dcp_china2(out)
+    out = dehaze(out)       #[dh]
+    #out = dehaze_dcp(out)     #[dh']
+   
+    #out = adaptive_sharpening(out)    #[sh]
+    out = sharpen(out)       #[sh']
     
-    out = sharpen(out)
-    
-    out = gamma_correct(out)
+    out = gamma_correct(out)   #[gm]
     return out
 
 # ------------------------------
@@ -478,7 +455,7 @@ def process_folder(input_folder, save_folder, exts=(".png", ".jpg", ".jpeg")):
             enhanced = enhance_underwater(img)
             end_time = time.time()
 
-            save_path = os.path.join(save_folder, f"preprocess_{fname}") 
+            save_path = os.path.join(save_folder, f"wb''_rr'_cl_dh_sh'_gm_{fname}")  #------------ nama file harus ganti
             cv2.imwrite(save_path, enhanced)
             print(f"[INFO] Processed: {fname} in {end_time - start_time:.2f} detik")
 
@@ -488,8 +465,8 @@ def process_folder(input_folder, save_folder, exts=(".png", ".jpg", ".jpeg")):
 
 # ------------------------------
 # Contoh penggunaan
-input_folder = r"D:\datasetfinal8\valid\images"
-save_folder  = r"D:\KULIAH ITB Daffa\SEM 8\TA2\preprocess\validnya coralscapes"
+input_folder = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\datamentah2" #------------ folder input harus ganti
+save_folder  = r"D:\KULIAH ITB Daffa\SEM 7\PERTAAN\peryoloan\model\model_datasetfinal5\testing\databersih2" #------------ fodler output harus ganti
 
 #process_and_save(input_folder, save_folder)
 process_folder(input_folder, save_folder)
