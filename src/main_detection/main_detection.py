@@ -1,12 +1,11 @@
 import time
 import os
-import queue
 import cv2
 
 # Import modules
 from areaCheck import load_boundaries, is_in_area
 from areaSetup import area_setup
-from dataAcquisition import init_light_control, set_light_control, close_light_control, start_camera_thread, stop_camera_thread
+from dataAcquisition import init_light_control, set_light_control, close_light_control, init_camera, get_camera_frame, close_camera
 from preProcess import enhance_underwater_pipeline
 from biotaDetection import load_yolo_model, run_yolo_model
 
@@ -15,7 +14,7 @@ from biotaDetection import load_yolo_model, run_yolo_model
 # ========================================================
 
 # TensorRT engine path on Jetson AGX Orin
-YOLO_ENGINE_PATH = ""
+YOLO_ENGINE_PATH = "/home/krbai/coba_yolo_auv/model_yolo11/yolo11n_datasetfinal5/best.engine"
 # Output directory
 OUTPUT_DIR = "output/main_detection_result_1/"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -60,9 +59,11 @@ def main():
         print("[WARNING] Camera Lighting Control Board not detected. Running system without light control")
     
     # Initialize camera thread
-    frame_queue = queue.Queue(maxsize=5)
-    start_camera_thread(frame_queue)
-    # Wait for hardware to warm up
+    cam_ready = init_camera
+    if not cam_ready:
+        print("[ERROR] Cannot start system without camera")
+        return
+    
     time.sleep(2)
     
     frame_count = 1
@@ -81,11 +82,11 @@ def main():
                         set_light_control(PWM_VAL)
                     system_active = True
                 
-                # Data pipeline
-                if not frame_queue.empty():
-                    # Obtain raw frame from memory
-                    raw_frame = frame_queue.get()
+                # Fetch frame directly
+                raw_frame = get_camera_frame()
 
+                # Data pipeline
+                if raw_frame is not None:
                     # Preprocess
                     start_time = time.time()
                     enhanced_frame, status_msg = enhance_underwater_pipeline(raw_frame)
@@ -105,12 +106,6 @@ def main():
                     print("\n[SYSTEM] AUV is outside of monitoring system. Turning off marine biota monitoring system...")
                     if cboard_ready:
                         set_light_control(0)
-                    # Clear old queue
-                    while not frame_queue.empty():
-                        try:
-                            frame_queue.get_nowait()
-                        except queue.Empty:
-                            break
                     system_active = False
                 
                 time.sleep(1) # Sleep briefly
@@ -120,7 +115,7 @@ def main():
     finally:
         # Thread teardown
         print("[SYTEM] Shutting down hardware...")
-        stop_camera_thread()
+        close_camera()
         close_light_control()
         print("[SYSTEM] Shutdown complete")
                 

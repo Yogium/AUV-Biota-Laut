@@ -1,8 +1,6 @@
 import serial
 import time
 import cv2
-import threading
-import queue
 
 # ========================================================
 # HARDWARE PARAMETERS
@@ -11,12 +9,10 @@ import queue
 ARDUINO_PORT = '/dev/ttyUSB0' 
 BAUD_RATE = 9600
 CAMERA_INDEX = 0
-CAP_INTERVAL = 1
 
 # Global flags and variables
-is_Recording = False
 ser = None
-camera_thread = None
+cap = None
 
 # ========================================================
 # LIGHT CONTROL FUNCTION
@@ -66,11 +62,11 @@ def close_light_control():
 
 
 # ========================================================
-# PERIODIC CAMERA CAPTURE
+# CAMERA FUNCTIONS
 # ========================================================
 
-# Periodic Capture Function
-def periodic_capture(frame_queue):
+# Initialize camera function
+def init_camera():
     # Grabs frames and puts frame in memory queue
     global is_Recording
     print(f"[SYSTEM] Opening camera on index {CAMERA_INDEX}")
@@ -83,61 +79,26 @@ def periodic_capture(frame_queue):
 
     if not cap.isOpened():
         print("[ERROR] Failed to open camera. Check connection")
-        is_Recording = False
-        return
-    
-    print("[SYSTEM] Data Acquisition System is ready. Capturing frames...")
+        return False
+    return True
 
-    try:
-        while is_Recording:
-            # Clear buffer
-            for _ in range(5):
-                cap.grab()
-            
-            ret, frame = cap.retrieve()
+# Obtain camera frame
+def get_camera_frame():
+    global cap
+    if cap is None or not cap.isOpened():
+        return None
+    # Clear hardware buffer
+    for _ in range(5):
+        cap.grab()
 
-            if ret:
-                # Save to queue
-                if frame_queue.full():
-                    try:
-                        frame_queue.get_nowait()
-                    except queue.Empty:
-                        pass
-                
-                frame_queue.put(frame)
+    ret, frame = cap.retrieve()
+    if ret:
+        return frame
+    return None
 
-                # Sleep loop to allow quick thread exit
-                for _ in range(CAP_INTERVAL * 10):
-                    if not is_Recording:
-                        break
-                    time.sleep(0.1)
-            else:
-                print("[ERROR] Failed to capture frame")
-                break
-
-    finally:
+# Close camera
+def close_camera():
+    global cap
+    if cap is not None:
         cap.release()
-        print("[SYSTEM] Hardware released. Turning off camera")
-
-# ========================================================
-# THREAD MANAGEMENT CONTROL
-# ========================================================
-
-def start_camera_thread(frame_queue):
-    # Start camera capture in background thread
-    global is_Recording, camera_thread
-    if is_Recording:
-        return
-    
-    is_Recording = True
-    # Pass the queue into the thread
-    camera_thread = threading.Thread(target=periodic_capture, args=(frame_queue,), daemon=True)
-    camera_thread.start()
-
-def stop_camera_thread():
-    # Stops camera background thread
-    global is_Recording, camera_thread
-    is_Recording = False
-    if camera_thread:
-        print("[SYSTEM] Waiting for camera to close...")
-        camera_thread.join()
+        print("[SYSTEM] Hardware released. Turning off camera...")
