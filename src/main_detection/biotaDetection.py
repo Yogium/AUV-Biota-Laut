@@ -1,5 +1,3 @@
-from ultralytics import YOLO
-
 # ========================================================
 # BIOTA DETECTION WITH YOLO
 # ========================================================
@@ -7,6 +5,10 @@ from ultralytics import YOLO
 # Loads YOLO TensorRT engine into the Jetson's GPU memory
 def load_yolo_model(model_path):
     print(f"[SYSTEM] Loading YOLO model into GPU memory from: {model_path}")
+    
+    # Only import YOLO when this function is called
+    from ultralytics import YOLO
+
     model = YOLO(model_path, task="detect")
     return model
 
