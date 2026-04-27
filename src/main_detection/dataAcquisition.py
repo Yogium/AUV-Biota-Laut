@@ -68,7 +68,7 @@ def close_light_control():
 # Initialize camera function
 def init_camera():
     # Grabs frames and puts frame in memory queue
-    global is_Recording
+    global cap
     print(f"[SYSTEM] Opening camera on index {CAMERA_INDEX}")
     cap = cv2.VideoCapture(CAMERA_INDEX)
 
@@ -87,6 +87,7 @@ def get_camera_frame():
     global cap
     if cap is None or not cap.isOpened():
         return None
+    
     # Clear hardware buffer
     for _ in range(5):
         cap.grab()

@@ -22,6 +22,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # PWM value for light
 PWM_VAL = 64
 
+# Time interval
+TIME_INTERVAL = 1.5
+
 # ========================================================
 # TELEMETRY (PLACEHOLDER)
 # ========================================================
@@ -100,6 +103,12 @@ def main():
                     cv2.imwrite(filename, detect_frame)
                     print(f"[SYSTEM] Data {filename} is saved | Processing Time: {total_time:.3f} | {status_msg}")
                     frame_count += 1
+
+                    # Add time interval
+                    time.sleep(TIME_INTERVAL)
+                else:
+                    print("[ERROR] Failed to grab frame from camera hardware")
+                    time.sleep(1)
 
             else: # Outside of monitoring zone
                 if system_active:
