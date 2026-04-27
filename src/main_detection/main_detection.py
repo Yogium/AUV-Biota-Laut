@@ -27,7 +27,7 @@ PWM_VAL = 64
 # ========================================================
 def get_cur_gps():
     # Simulates getting GPS from UDOO
-    return -6.87, 107.98
+    return 6.87, 7.98
 
 # ========================================================
 # MAIN
@@ -59,7 +59,7 @@ def main():
         print("[WARNING] Camera Lighting Control Board not detected. Running system without light control")
     
     # Initialize camera thread
-    cam_ready = init_camera
+    cam_ready = init_camera()
     if not cam_ready:
         print("[ERROR] Cannot start system without camera")
         return
@@ -70,14 +70,14 @@ def main():
     system_active = False # Initially turned off
 
     try:
-        print("\n[SYSTEM] Entering autonomous navigation loop...")
+        print("[SYSTEM] Entering autonomous navigation loop...")
         while True:
             # Obtain current location
             cur_lat, cur_lon = get_cur_gps()
             
             if is_in_area(cur_lat, cur_lon, bounds):
                 if not system_active:
-                    print("\n[SYSTEM] AUV is entering monitoring zone. Activating marine biota detection system")
+                    print("[SYSTEM] AUV is entering monitoring zone. Activating marine biota detection system")
                     if cboard_ready:
                         set_light_control(PWM_VAL)
                     system_active = True
@@ -103,7 +103,7 @@ def main():
 
             else: # Outside of monitoring zone
                 if system_active:
-                    print("\n[SYSTEM] AUV is outside of monitoring system. Turning off marine biota monitoring system...")
+                    print("[SYSTEM] AUV is outside of monitoring system. Turning off marine biota monitoring system...")
                     if cboard_ready:
                         set_light_control(0)
                     system_active = False
@@ -111,10 +111,10 @@ def main():
                 time.sleep(1) # Sleep briefly
         
     except KeyboardInterrupt:
-        print("\n[SYSTEM] System aborted. Initiating shutdown sequence...")
+        print("[SYSTEM] System aborted. Initiating shutdown sequence...")
     finally:
         # Thread teardown
-        print("[SYTEM] Shutting down hardware...")
+        print("[SYSTEM] Shutting down hardware...")
         close_camera()
         close_light_control()
         print("[SYSTEM] Shutdown complete")

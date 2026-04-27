@@ -8,8 +8,8 @@ def area_setup():
     print("\n[SYSTEM] Configure Monitoring Zone")
     try: 
         # map() applies the float conversion to both coordinates cleanly
-        lat1, lon1 = map(float, input("Enter Corner 1 Latitude & Longitude (space separated): ").split())
-        lat2, lon2 = map(float, input("Enter Corner 2 Latitude & Longitude (space separated): ").split())
+        lat1, lon1 = map(float, input("[SYSTEM] Enter Corner 1 Latitude & Longitude (space separated): ").split())
+        lat2, lon2 = map(float, input("[SYSTEM] Enter Corner 2 Latitude & Longitude (space separated): ").split())
     except ValueError:
         print("[ERROR] Input must be decimal numbers separated by a space.")
         return
