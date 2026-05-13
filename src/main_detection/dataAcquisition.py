@@ -2,10 +2,6 @@ import serial
 import time
 import cv2
 
-# ========================================================
-# HARDWARE PARAMETERS
-# ========================================================
-
 ARDUINO_PORT = '/dev/ttyUSB0' 
 BAUD_RATE = 9600
 CAMERA_INDEX = 0

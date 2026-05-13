@@ -1,9 +1,5 @@
 import json
 
-# ========================================================
-# CHECK MONITORING ZONE
-# ========================================================
-
 # Load boundary coordinates from JSON config file
 def load_boundaries(filename="m_bounds.json"):
     try:

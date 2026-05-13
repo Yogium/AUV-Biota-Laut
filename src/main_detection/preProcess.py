@@ -1,9 +1,6 @@
 import cv2
 import numpy as np
 
-# ========================================================
-# DEFAULT PREPROCESSING PARAMETERS
-# ========================================================
 A_SHIFT, B_SHIFT = 0, 0
 OMEGA, CLAHE_CLIP = 0.75, 1.0
 RED_STRENGTH, T_MIN = 10, 0.35

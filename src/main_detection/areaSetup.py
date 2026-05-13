@@ -1,9 +1,5 @@
 import json
 
-# ========================================================
-# MONITORING ZONE SETUP
-# ========================================================
-
 def area_setup():
     print("\n[SYSTEM] Configure Monitoring Zone")
     try: 
