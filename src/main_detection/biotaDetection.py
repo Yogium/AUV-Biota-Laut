@@ -1,15 +1,11 @@
 # Color mapping (cls, flag) -> BGR
 COLOR_MAP = {
-    (0,0): (32, 165, 218),   # Fish
-    (0,1): (0, 0, 255),      # Fish (unsure)
-    (1,0): (150, 0, 0),      # Coral
-    (1,1): (0, 0, 255),      # Coral (unsure)
-    (2,0): (255, 0, 255),    # Seagrass
-    (2,1): (0, 0, 255),      # Seagrass (unsure)
-    (3,0): (0, 100, 0),      # Human
-    (3,1): (0, 0, 255),      # Human (unsure)
-    (4,0): (80, 80, 80),     # Others
-    (4,1): (0, 0, 255),      # Others (unsure)
+    (0,0): (0, 128, 255),   # Fish (Orange)
+    (0,1): (0, 0, 255),      # Fish Unsure (Red)
+    (1,0): (150, 0, 0),      # Coral (Blue)
+    (1,1): (0, 0, 255),      # Coral Unsure (Red)
+    (2,0): (255, 0, 255),    # Human (Magenta)
+    (2,1): (0, 0, 255)      # Human Unsure (Red)
 }
 
 # Loads YOLO TensorRT engine into the Jetson's GPU memory
@@ -23,7 +19,7 @@ def load_yolo_model(model_path):
     return model
 
 # Run YOLO model for biota inference
-def run_yolo_model(model, frame, frame_count, vehicle_id, mission_id):
+def run_yolo_model(model, c_thres, frame, frame_count, vehicle_id, mission_id):
     # Import annotator only when function called to prevent collision
     from ultralytics.utils.plotting import Annotator
 
@@ -58,7 +54,7 @@ def run_yolo_model(model, frame, frame_count, vehicle_id, mission_id):
             obj_counter = label_counter[cls]
 
             # Uncertainty flag
-            flag = 1 if conf > 0.5 else 0
+            flag = 1 if conf > c_thres else 0
             flag_text = "Yakin" if flag == 1 else "Tidak Yakin"
 
             # Unique ID

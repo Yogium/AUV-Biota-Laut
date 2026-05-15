@@ -4,7 +4,7 @@ import cv2
 
 ARDUINO_PORT = '/dev/ttyUSB0' 
 BAUD_RATE = 9600
-CAMERA_INDEX = 0
+CAMERA_INDEX = 0 # Default
 
 # Global flags and variables
 ser = None

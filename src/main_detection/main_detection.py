@@ -27,14 +27,17 @@ TIME_INTERVAL = 1.5
 VEHICLE_ID = "auv01"
 MISSION_ID = "ms01"
 
+# Confidence threshold
+CONF_THRES = 0.4
+
 # WebSocket settings
-WS_URL = ""
+WS_URL = "ws://localhost:8080"
 
 # ========================================================
 # TELEMETRY (PLACEHOLDER)
 # ========================================================
 def get_cur_gps():
-    # Simulates getting GPS from UDOO
+    # Simulates getting GPS from DVL Module
     return 6.87, 7.98, 12.5
 
 # ========================================================
@@ -74,8 +77,8 @@ def main():
     try:
         ws.connect(WS_URL)
         print("[SYSTEM] Connected via WebSocket")
-    except Exception as e:
-        print(f"[ERROR] Connection failed: {e}")
+    except Exception as err:
+        print(f"[ERROR] Connection failed: {err}")
     
     time.sleep(2)
     
@@ -105,7 +108,7 @@ def main():
                     enhanced_frame, status_msg = enhance_underwater_pipeline(raw_frame)
 
                     # YOLO Detection
-                    detect_frame, detections, filename = run_yolo_model(model, enhanced_frame, frame_count, VEHICLE_ID, MISSION_ID)
+                    detect_frame, detections, filename = run_yolo_model(model, CONF_THRES, enhanced_frame, frame_count, VEHICLE_ID, MISSION_ID)
                     total_time = time.time() - start_time
 
                     # Save to disk
@@ -126,6 +129,7 @@ def main():
                             "depth": cur_depth,
                             "label": det["label"],
                             "confidence": det["confidence"],
+                            "flag": det["flag_text"],
                             "filename": filename    
                         }
                         detect_data.append(row)
@@ -150,14 +154,12 @@ def main():
                     try:
                         ws.send(json.dumps(ws_message))
                         print(f"[SYSTEM] Data sent via WebSocket")
-                    except Exception as e:
-                        print(f"[ERROR] Sending data failed: {e}")
+                    except Exception as err:
+                        print(f"[ERROR] Sending data failed: {err}")
 
                     print(f"[SYSTEM] Data {filename} is saved | Processing Time: {total_time:.3f} | {status_msg}")
                     frame_count += 1
 
-                    # Add time interval
-                    time.sleep(TIME_INTERVAL)
                 else:
                     print("[ERROR] Failed to grab frame from camera hardware")
                     time.sleep(1)
@@ -168,13 +170,14 @@ def main():
                     if cboard_ready:
                         set_light_control(0)
                     system_active = False
-                
-                time.sleep(1) # Sleep briefly
+            
+            # Add time interval
+            time.sleep(TIME_INTERVAL)
         
     except KeyboardInterrupt:
         print("[SYSTEM] System aborted. Initiating shutdown sequence...")
     finally:
-        # Thread teardown
+        # Shutting down system
         print("[SYSTEM] Shutting down hardware...")
         close_camera()
         close_light_control()

@@ -21,5 +21,5 @@ def area_setup():
         with open("m_bounds.json", "w") as outfile:
             json.dump(bounds, outfile, indent=4)
         print("[SYSTEM] Monitoring zone is saved to m_bounds.json")
-    except Exception as err:
-        print(f"[ERROR] Monitoring zone cannot be made: {err}")
+    except Exception as e:
+        print(f"[ERROR] Monitoring zone cannot be made: {e}")
