@@ -12,7 +12,7 @@ from preProcess import enhance_underwater_pipeline
 from biotaDetection import load_yolo_model, run_yolo_model
 
 # TensorRT engine path on Jetson AGX Orin
-YOLO_ENGINE_PATH = "/home/krbai/coba_yolo_auv/model_yolo11/yolo11n_datasetfinal5/best.engine"
+YOLO_ENGINE_PATH = "/home/krbai/acquisition/biotadetect_11.engine"
 # Output directory
 # OUTPUT_DIR = "output/main_detection_result_1/"
 # os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -135,14 +135,15 @@ def main():
                         detect_data.append(row)
 
                     # Encode images (preprocessed and detected)
-                    _, buffer_enh = cv2.imencode('.jpg', enhanced_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-                    _, buffer_det = cv2.imencode('.jpg', detect_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                    _, buffer_enh = cv2.imencode('.jpg', enhanced_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                    _, buffer_det = cv2.imencode('.jpg', detect_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
 
                     b64_enhanced = base64.b64encode(buffer_enh).decode('utf-8')
                     b64_detected = base64.b64encode(buffer_det).decode('utf-8')
 
                     # Build TCP payload
                     ws_message = {
+                        "filename": filename,
                         "metadata": detect_data,
                         "images": {
                             "preprocessed": b64_enhanced,
