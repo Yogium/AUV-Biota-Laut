@@ -10,22 +10,24 @@ from areaSetup import area_setup
 from dataAcquisition import init_light_control, set_light_control, close_light_control, init_camera, get_camera_frame, close_camera
 from preProcess import enhance_underwater_pipeline
 from biotaDetection import load_yolo_model, run_yolo_model
+from auv_sim import simulate_auv
 
 # TensorRT engine path on Jetson AGX Orin
 YOLO_ENGINE_PATH = "/home/krbai/acquisition/biotadetect_11.engine"
-# Output directory
-# OUTPUT_DIR = "output/main_detection_result_1/"
-# os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # PWM value for light
 PWM_VAL = 64
 
 # Time interval
-TIME_INTERVAL = 1.5
+MONITOR_INTERVAL = 1.5
+NAV_INTERVAL = 0.2
 
 # Mission settings
 VEHICLE_ID = "auv01"
 MISSION_ID = "ms01"
+INIT_COORD = -7.701000, 108.654000, -5
+AUV_SPEED = 0.2 # m/s
+NAV_ACTIVE = True # Active
 
 # Confidence threshold
 CONF_THRES = 0.4
@@ -34,19 +36,12 @@ CONF_THRES = 0.4
 WS_URL = "ws://localhost:8080"
 
 # ========================================================
-# TELEMETRY (PLACEHOLDER)
-# ========================================================
-def get_cur_gps():
-    # Simulates getting GPS from DVL Module
-    return 6.87, 7.98, 12.5
-
-# ========================================================
 # MAIN
 # ========================================================
 
 def main():
     print("\n" + "="*50)
-    print("\nAUV MARINE BIOTA MONITORING SYSTEM")
+    print("\n    AUV MARINE BIOTA MONITORING SYSTEM")
     print("\n" + "="*50)
 
     # Monitoring zone setup using areaSetup
@@ -87,9 +82,16 @@ def main():
 
     try:
         print("[SYSTEM] Entering autonomous navigation loop...")
-        while True:
+        # Iniitialization
+        step_time = 0
+        cur_coord = INIT_COORD
+        while NAV_ACTIVE:
+            # Determine loop delay
+            cur_delay = MONITOR_INTERVAL if system_active else NAV_INTERVAL # Navigation updates every half second
             # Obtain current location
-            cur_lat, cur_lon, cur_depth = get_cur_gps()
+            status_msg, cur_lat, cur_lon, cur_depth = simulate_auv(cur_coord, bounds, AUV_SPEED, NAV_ACTIVE, step_time, cur_delay)
+            # Update current coordinate
+            cur_coord = (cur_lat, cur_lon, cur_depth)
             
             if is_in_area(cur_lat, cur_lon, bounds):
                 if not system_active:
@@ -110,10 +112,6 @@ def main():
                     # YOLO Detection
                     detect_frame, detections, filename = run_yolo_model(model, CONF_THRES, enhanced_frame, frame_count, VEHICLE_ID, MISSION_ID)
                     total_time = time.time() - start_time
-
-                    # Save to disk
-                    # filepath = os.path.join(OUTPUT_DIR, filename)
-                    # cv2.imwrite(filepath, detect_frame)
 
                     # Obtain current time
                     cur_time = time.strftime("%H:%M:%S")
@@ -154,16 +152,13 @@ def main():
                     # Send over to websocket
                     try:
                         ws.send(json.dumps(ws_message))
-                        print(f"[SYSTEM] Data sent via WebSocket")
-                    except Exception as err:
-                        print(f"[ERROR] Sending data failed: {err}")
+                        print(f"[SYSTEM] Data {filename} is sent via WebSocket | Processing Time: {total_time:.3f}")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to send {filename}: {e}")
 
-                    print(f"[SYSTEM] Data {filename} is saved | Processing Time: {total_time:.3f} | {status_msg}")
                     frame_count += 1
-
                 else:
                     print("[ERROR] Failed to grab frame from camera hardware")
-                    time.sleep(1)
 
             else: # Outside of monitoring zone
                 if system_active:
@@ -171,9 +166,15 @@ def main():
                     if cboard_ready:
                         set_light_control(0)
                     system_active = False
+                # Print current position
+                print(f"[SYSTEM] En route to target position. Current position: ({cur_lat:.6f}, {cur_lon:.6f})")
             
-            # Add time interval
-            time.sleep(TIME_INTERVAL)
+            # Add step time and delay
+            step_time += 1
+            time.sleep(cur_delay)
+
+            if status_msg == "INACTIVE":
+                print("[SYSTEM] AUV has reached target position")
         
     except KeyboardInterrupt:
         print("[SYSTEM] System aborted. Initiating shutdown sequence...")
