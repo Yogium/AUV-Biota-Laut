@@ -1,4 +1,4 @@
-#include <database.h>
+#include "database.h"
 #include <iostream>
 #include <string>
 #include <sqlite3.h>
@@ -7,36 +7,26 @@
 #include <sstream>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 //class for biota_laut table
-class DataBiota{
-    private:
-    //setting a timestamp
-        std::string get_iso8601_timestamp(){
-            auto now = std::chrono::system_clock::now();
-            std::time_t t = std::chrono::system_clock::to_time_t(now);
-            std::stringstream ss;
-            ss << std::put_time(std::gmtime(&t), "%FT%TZ");
-            return ss.str();
-        }
-    public:
-        int id;
-        std::string timestamp;
-        double lat;
-        double lon;
-        float depth;
-        std::string label;
-        float confidence;
-        std::string filename;
+std::string DataBiota::get_iso8601_timestamp(){
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::stringstream ss;
+    ss << std::put_time(std::gmtime(&t), "%FT%TZ");
+    return ss.str();
+}
 
-   //default construct
-    DataBiota() : id(0), lat(0.0), lon(0.0), depth(0.0f), confidence(0.0f) {};
-    
-    //construct with input
-    DataBiota(int _id, double _lat, double _lon, float _depth, std::string _lbl, float _conf, std::string _fname ): id(_id), lat(_lat), lon(_lon), depth(_depth), label(_lbl), confidence(_conf), filename(_fname){
-        timestamp = get_iso8601_timestamp();
-    }
-};
+// Implement constructors
+DataBiota::DataBiota() : id(0), lat(0.0), lon(0.0), depth(0.0f), confidence(0.0f) {}
+
+DataBiota::DataBiota(int _id, double _lat, double _lon, float _depth, std::string _lbl, float _conf, int _flag, std::string _fname)
+    : id(_id), lat(_lat), lon(_lon), depth(_depth), label(_lbl), confidence(_conf), flag(_flag), filename(_fname) {
+    timestamp = get_iso8601_timestamp();
+}
 
 // callback function for sqlite database
 static int callback(void *NotUsed,  int argc, char **argv, char **azColName){
@@ -79,6 +69,7 @@ int dbInit(sqlite3 *&db, const std::string &passwd){
         "depth FLOAT NOT NULL, "
         "label TEXT NOT NULL, "
         "confidence FLOAT NOT NULL, "
+        "flag INTEGER NOT NULL,"
         "filename TEXT NOT NULL); ";
 
     rc = sqlite3_exec(db, createTableSQL, nullptr, nullptr, &errMsg);
@@ -94,8 +85,8 @@ int dbInit(sqlite3 *&db, const std::string &passwd){
 
 // function to add data to database
 void addData(sqlite3* db, const DataBiota& data){
-    const char* sql = "INSERT INTO biota_laut (id, time, latitude, longitude, depth, label, confidence, filename) "
-                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    const char* sql = "INSERT INTO biota_laut (id, time, latitude, longitude, depth, label, confidence, flag, filename) "
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     //preparing sqlite statement
     sqlite3_stmt* stmt;
@@ -113,7 +104,8 @@ void addData(sqlite3* db, const DataBiota& data){
     sqlite3_bind_double(stmt, 5, data.depth);
     sqlite3_bind_text(stmt, 6, data.label.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_double(stmt, 7, data.confidence);
-    sqlite3_bind_text(stmt, 8, data.filename.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 8, data.flag);
+    sqlite3_bind_text(stmt, 9, data.filename.c_str(), -1, SQLITE_STATIC);
 
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -124,7 +116,7 @@ void exportJSON(sqlite3* db){
     nlohmann::json jsonArr = nlohmann::json::array();
     
     //declare sqlite statements
-    const char* sql = "SELECT id, time, latitude, longitude, depth, label, confidence, filename FROM biota_laut";
+    const char* sql = "SELECT id, time, latitude, longitude, depth, label, confidence, flag, filename FROM biota_laut";
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
     if(rc != SQLITE_OK){
@@ -142,7 +134,8 @@ void exportJSON(sqlite3* db){
         obj["depth"] = sqlite3_column_double(stmt, 4);
         obj["label"] = std::string((const char*)sqlite3_column_text(stmt, 5));
         obj["confidence"] = sqlite3_column_double(stmt, 6);
-        obj["filename"] = std::string((const char*)sqlite3_column_text(stmt, 7));
+        obj["flag"] = sqlite3_column_int(stmt, 7);
+        obj["filename"] = std::string((const char*)sqlite3_column_text(stmt, 8));
         jsonArr.push_back(obj);
     }
     sqlite3_finalize(stmt);
@@ -169,6 +162,16 @@ void cleanDb(sqlite3* db){
         return;
     }
     std::cout << "All rows deleted from table!" << std::endl;
+}
+
+int socketInit(int port){
+    int serversocket = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(port);
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    bind(serversocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+    return serversocket; 
 }
 
 
