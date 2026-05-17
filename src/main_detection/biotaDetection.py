@@ -8,6 +8,13 @@ COLOR_MAP = {
     (2,1): (0, 0, 255)      # Human Unsure (Red)
 }
 
+# Class mapping cls -> cls_text
+CLS_MAP = {
+    0: "Fish",
+    1: "Coral",
+    2: "Human"
+}
+
 # Loads YOLO TensorRT engine into the Jetson's GPU memory
 def load_yolo_model(model_path):
     print(f"[SYSTEM] Loading YOLO model into GPU memory from: {model_path}")
@@ -67,9 +74,10 @@ def run_yolo_model(model, c_thres, frame, frame_count, vehicle_id, mission_id):
             annotator.box_label([x1, y1, x2, y2], f"ID:{unique_id}", color=color)
 
             # Save metadata
+            label_txt = CLS_MAP.get(cls)
             detections.append({
                 "ID": unique_id,
-                "label": cls,
+                "label": label_txt,
                 "confidence": conf,
                 "flag": flag_text
             })
