@@ -61,8 +61,8 @@ def run_yolo_model(model, c_thres, frame, frame_count, vehicle_id, mission_id):
             obj_counter = label_counter[cls]
 
             # Uncertainty flag
-            flag = 1 if conf > c_thres else 0
-            flag_text = "Yakin" if flag == 1 else "Tidak Yakin"
+            flag = 1 if conf < c_thres else 0
+            flag_text = "Tidak Yakin" if flag == 1 else "Yakin"
 
             # Unique ID
             unique_id = f"{flag}{cls}{frame_count:05d}{obj_counter:03d}"

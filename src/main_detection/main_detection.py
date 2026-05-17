@@ -26,11 +26,11 @@ NAV_INTERVAL = 0.2
 VEHICLE_ID = "auv01"
 MISSION_ID = "ms01"
 INIT_COORD = -7.701000, 108.654000, -5
-AUV_SPEED = 0.2 # m/s
+AUV_SPEED = 2.0 # m/s
 NAV_ACTIVE = True # Active
 
 # Confidence threshold
-CONF_THRES = 0.4
+CONF_THRES = 0.6
 
 # WebSocket settings
 WS_URL = "ws://localhost:8080"
@@ -127,7 +127,7 @@ def main():
                             "depth": cur_depth,
                             "label": det["label"],
                             "confidence": det["confidence"],
-                            "flag": det["flag_text"],
+                            "flag": det["flag"],
                             "filename": filename    
                         }
                         detect_data.append(row)
@@ -183,8 +183,8 @@ def main():
         print("[SYSTEM] Shutting down hardware...")
         close_camera()
         close_light_control()
-        if 'ws' in locals and ws.connected():
-            ws.close()
+        # if 'ws' in locals and ws.connected():
+        #     ws.close()
         print("[SYSTEM] Shutdown complete")
                 
 if __name__ == "__main__":
