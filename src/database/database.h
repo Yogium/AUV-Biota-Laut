@@ -15,13 +15,17 @@ class DataBiota{
     float depth;
     std::string label;
     float confidence;
+    int flag;
     std::string filename;
 
     DataBiota();
-    DataBiota(int _id, double _lat, double _lon, float _depth, std::string _lbl, float _conf, std::string _fname);
+    DataBiota(int _id, double _lat, double _lon, float _depth, std::string _lbl, float _conf, int _flag, std::string _fname);
 };
 
-int dbInit(sqlite3*& db, const std::string passwd);
+
+static int callback(void *NotUsed,  int argc, char **argv, char **azColName);
+int dbInit(sqlite3 *&db, const std::string &passwd);
 void addData(sqlite3* db, const DataBiota& data);
 void exportJSON(sqlite3* db);
 void cleanDb(sqlite3* db);
+int socketInit(int port);
