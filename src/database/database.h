@@ -4,9 +4,6 @@
 #include <sqlite3.h>
 
 class DataBiota{
-    private:
-    std::string get_iso8601_timestamp();
-
     public:
     int id;
     std::string timestamp;
@@ -15,11 +12,11 @@ class DataBiota{
     float depth;
     std::string label;
     float confidence;
-    int flag;
+    std::string flag;
     std::string filename;
 
     DataBiota();
-    DataBiota(int _id, double _lat, double _lon, float _depth, std::string _lbl, float _conf, int _flag, std::string _fname);
+    DataBiota(int _id, std::string _time, double _lat, double _lon, float _depth, std::string _lbl, float _conf, std::string _flag, std::string _fname);
 };
 
 

@@ -11,24 +11,14 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-//class for biota_laut table
-std::string DataBiota::get_iso8601_timestamp(){
-    auto now = std::chrono::system_clock::now();
-    std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::stringstream ss;
-    ss << std::put_time(std::gmtime(&t), "%FT%TZ");
-    return ss.str();
-}
-
 // Implement constructors
 DataBiota::DataBiota() : id(0), lat(0.0), lon(0.0), depth(0.0f), confidence(0.0f) {}
 
-DataBiota::DataBiota(int _id, double _lat, double _lon, float _depth, std::string _lbl, float _conf, int _flag, std::string _fname)
-    : id(_id), lat(_lat), lon(_lon), depth(_depth), label(_lbl), confidence(_conf), flag(_flag), filename(_fname) {
-    timestamp = get_iso8601_timestamp();
+DataBiota::DataBiota(int _id, std::string _time, double _lat, double _lon, float _depth, std::string _lbl, float _conf, std::string _flag, std::string _fname)
+    : id(_id), timestamp(_time), lat(_lat), lon(_lon), depth(_depth), label(_lbl), confidence(_conf), flag(_flag), filename(_fname) {
 }
 
-// callback function for sqlite database
+// Callback function for sqlite database
 static int callback(void *NotUsed,  int argc, char **argv, char **azColName){
     for(int i=0;i<argc; i++){
         std::cout << azColName[i] << " = " << (argv[i] ? argv[i] : "NULL") << std::endl;
@@ -37,44 +27,44 @@ static int callback(void *NotUsed,  int argc, char **argv, char **azColName){
     return 0;
 }
 
-// function to initialize and open database
+// Function to initialize and open database
 int dbInit(sqlite3 *&db, const std::string &passwd){
-    //open database file
+    // Open database file
     int rc = sqlite3_open("biota_encrypted.db", &db);
     if(rc){
-        std::cerr << "error opening database: " << sqlite3_errmsg16(db) << std::endl;
+        std::cerr << "[ERROR] Failed to open database: " << sqlite3_errmsg16(db) << std::endl;
         return (-1);
     }
-    std::cout << "Database successfully opened!\n";
+    std::cout << "[SYSTEM] Database successfully opened!\n";
 
-    //set encryption key
+    // Set encryption key
     std::string pragma = "PRAGMA key = '" + passwd + "';";
     char *errMsg = nullptr;
     rc = sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, &errMsg);
     if(rc != SQLITE_OK){
-        std::cerr << "Error setting encryption key: " << errMsg << std::endl;
+        std::cerr << "[ERROR] Error setting encryption key: " << errMsg << std::endl;
         sqlite3_free(errMsg);
         sqlite3_close(db);
         return (-1);
     }
-    std::cout << "Database encrypted!\n";
+    std::cout << "[SYSTEM] Database encrypted!\n";
 
-    //ensure table exists
+    // Ensure table exists
     const char *createTableSQL = 
         "CREATE TABLE IF NOT EXISTS biota_laut("
         "id INTEGER PRIMARY KEY, "
-        "time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+        "time TEXT NOT NULL, "
         "latitude DOUBLE NOT NULL, "
         "longitude DOUBLE NOT NULL, "
         "depth FLOAT NOT NULL, "
         "label TEXT NOT NULL, "
         "confidence FLOAT NOT NULL, "
-        "flag INTEGER NOT NULL,"
+        "flag TEXT NOT NULL,"
         "filename TEXT NOT NULL); ";
 
     rc = sqlite3_exec(db, createTableSQL, nullptr, nullptr, &errMsg);
     if(rc != SQLITE_OK){
-        std::cerr << "Error creating table: " << errMsg << std::endl;
+        std::cerr << "[ERROR] Failed to create table: " << errMsg << std::endl;
         sqlite3_free(errMsg);
         sqlite3_close(db);
         return (-1);
@@ -83,7 +73,7 @@ int dbInit(sqlite3 *&db, const std::string &passwd){
 }
 
 
-// function to add data to database
+// Function to add data to database
 void addData(sqlite3* db, const DataBiota& data){
     const char* sql = "INSERT INTO biota_laut (id, time, latitude, longitude, depth, label, confidence, flag, filename) "
                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -92,7 +82,7 @@ void addData(sqlite3* db, const DataBiota& data){
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
     if(rc != SQLITE_OK){
-        std::cerr << "SQL Error: " << sqlite3_errmsg(db) << std::endl;
+        std::cerr << "[ERROR] SQL Error: " << sqlite3_errmsg(db) << std::endl;
         return;
     }
 
@@ -104,7 +94,7 @@ void addData(sqlite3* db, const DataBiota& data){
     sqlite3_bind_double(stmt, 5, data.depth);
     sqlite3_bind_text(stmt, 6, data.label.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_double(stmt, 7, data.confidence);
-    sqlite3_bind_int(stmt, 8, data.flag);
+    sqlite3_bind_text(stmt, 8, data.flag.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 9, data.filename.c_str(), -1, SQLITE_STATIC);
 
     sqlite3_step(stmt);
@@ -112,19 +102,19 @@ void addData(sqlite3* db, const DataBiota& data){
 }
 
 void exportJSON(sqlite3* db){
-    //declare array to hold records
+    // Declare array to hold records
     nlohmann::json jsonArr = nlohmann::json::array();
     
-    //declare sqlite statements
+    // Declare sqlite statements
     const char* sql = "SELECT id, time, latitude, longitude, depth, label, confidence, flag, filename FROM biota_laut";
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
     if(rc != SQLITE_OK){
-        std::cerr << "SQL Error preparing database for extractions: " << sqlite3_errmsg(db) << std::endl;
+        std::cerr << "[ERROR] SQL Error preparing database for extractions: " << sqlite3_errmsg(db) << std::endl;
         return;
     }
 
-    //fetch each row and built a json object
+    // Fetch each row and built a json object
     while(sqlite3_step(stmt) == SQLITE_ROW){
         nlohmann::json obj;
         obj["id"] = sqlite3_column_int(stmt, 0);
@@ -134,71 +124,56 @@ void exportJSON(sqlite3* db){
         obj["depth"] = sqlite3_column_double(stmt, 4);
         obj["label"] = std::string((const char*)sqlite3_column_text(stmt, 5));
         obj["confidence"] = sqlite3_column_double(stmt, 6);
-        obj["flag"] = sqlite3_column_int(stmt, 7);
+        obj["flag"] = std::string((const char*)sqlite3_column_text(stmt, 7));
         obj["filename"] = std::string((const char*)sqlite3_column_text(stmt, 8));
         jsonArr.push_back(obj);
     }
     sqlite3_finalize(stmt);
 
-    //write to a file in same directory
+    // Write to a file in same directory
     std::ofstream file("biota_export.json");
     if(!file.is_open()){
-        std::cerr << "Error opening file" << std::endl;
+        std::cerr << "[ERROR] Failed to open file" << std::endl;
         return;
     }
-    file << jsonArr.dump(4); //4 space indentation
+    file << jsonArr.dump(4); // 4 space indentation
     file.close();
-    std::cout << "data exported to biota_export.json" << std::endl;
+    std::cout << "[SYSTEM] Data successfully exported to biota_export.json" << std::endl;
 }
 
-//function to clean current database of all rows in table
+// Function to clean current database of all rows in table
 void cleanDb(sqlite3* db){
     const char* sql = "DELETE FROM biota_laut;";
     char* errmsg = nullptr;
     int rc = sqlite3_exec(db, sql, nullptr, nullptr, &errmsg);
     if(rc != SQLITE_OK){
-        std::cerr << "Error deleting all rows form table: " << errmsg << std::endl;
+        std::cerr << "[ERROR] Failed to delete all rows from table: " << errmsg << std::endl;
         sqlite3_free(errmsg);
         return;
     }
-    std::cout << "All rows deleted from table!" << std::endl;
+    std::cout << "[SYSTEM] All rows deleted from table!" << std::endl;
 }
 
 int socketInit(std::string ip, int port){
     int serversocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serversocket == -1) return -1;
+    // Prevent "address already in use" error
+    int opt = 1;
+    setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = inet_addr(ip.c_str());
-    bind(serversocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+
+    // Bind socket
+    if (bind(serversocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+        std::cerr << "[ERROR] Socket binding failed" << std::endl;
+        return -1;
+    };
+    // Set the socket to listen to incoming data
+    if (listen(serversocket, 3) < 0) {
+        std::cerr << "[ERROR] Socket listening failed" << std::endl;
+        return -1;
+    }
     return serversocket; 
 }
-
-
-//main function for testing
-// int main(){
-//     sqlite3 *db;
-//     char* errMsg;
-//     int rc;
-//     std::string pwd = "test_pwd";
-//     std::string wrongPwd = "wrong_pwd";
-
-//     dbInit(db, pwd);
-
-//     // Create sample DataBiota objects
-//     DataBiota biota1(1001234001, 6.2088, 106.8450, 5.5f, "Fish", 0.95f, "fish_001.jpg");
-//     DataBiota biota2(1001234002, 6.2089, 106.8451, 6.0f, "Coral", 0.87f, "coral_001.jpg");
-//     DataBiota biota3(1001234003, 6.2090, 106.8452, 7.2f, "Seagrass", 0.92f, "seagrass_001.jpg");
-
-//     // Insert data into database
-//     addData(db, biota1);
-//     addData(db, biota2);
-//     addData(db, biota3);
-
-//     std::cout << "Data inserted\n";
-
-//     exportJSON(db);
-
-//     sqlite3_close(db);
-//     return 0;
-// }

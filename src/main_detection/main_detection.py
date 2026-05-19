@@ -185,8 +185,8 @@ def main():
         print("[SYSTEM] Shutting down hardware...")
         close_camera()
         close_light_control()
-        # if 'ws' in locals and ws.connected():
-        #     ws.close()
+        if 'sock' in locals():
+            sock.close()
         print("[SYSTEM] Shutdown complete")
                 
 if __name__ == "__main__":
