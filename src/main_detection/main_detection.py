@@ -1,7 +1,7 @@
 import time
 import base64
 import cv2
-import websocket
+import socket
 import json
 
 # Import modules
@@ -33,7 +33,8 @@ NAV_ACTIVE = True # Active
 CONF_THRES = 0.6
 
 # WebSocket settings
-WS_URL = "ws://localhost:8080"
+TCP_IP = "127.0.0.1"
+TCP_PORT = 8080
 
 # ========================================================
 # MAIN
@@ -68,9 +69,9 @@ def main():
         return
     
     # Initialize websocket client
-    ws = websocket.WebSocket()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        ws.connect(WS_URL)
+        sock.connect((TCP_IP, TCP_PORT))
         print("[SYSTEM] Connected via WebSocket")
     except Exception as err:
         print(f"[ERROR] Connection failed: {err}")
@@ -151,7 +152,8 @@ def main():
 
                     # Send over to websocket
                     try:
-                        ws.send(json.dumps(ws_message))
+                        tcp_message = json.dumps(ws_message) + "\n"
+                        sock.sendall(tcp_message.encode('utf-8'))
                         print(f"[SYSTEM] Data {filename} is sent via WebSocket | Processing Time: {total_time:.3f}")
                     except Exception as e:
                         print(f"[ERROR] Failed to send {filename}: {e}")

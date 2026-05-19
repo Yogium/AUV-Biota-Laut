@@ -164,12 +164,12 @@ void cleanDb(sqlite3* db){
     std::cout << "All rows deleted from table!" << std::endl;
 }
 
-int socketInit(int port){
+int socketInit(std::string ip, int port){
     int serversocket = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
-    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverAddr.sin_addr.s_addr = inet_addr(ip.c_str());
     bind(serversocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
     return serversocket; 
 }

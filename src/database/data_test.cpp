@@ -64,10 +64,12 @@ int main(){
     std::string pwd = "test_pwd";
     std::string wrongPwd = "wrong_pwd";
     int port = 9420;
+    std::string ip = "127.0.0.1";
 
     dbInit(db, pwd);
+    cleanDb(db);
     
-    int serverSock = socketInit(port);
+    int serverSock = socketInit(ip, port);
     listen(serverSock, 5);
     std::cout << "Server listening on port " << port << std::endl;
 

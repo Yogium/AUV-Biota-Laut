@@ -28,4 +28,4 @@ int dbInit(sqlite3 *&db, const std::string &passwd);
 void addData(sqlite3* db, const DataBiota& data);
 void exportJSON(sqlite3* db);
 void cleanDb(sqlite3* db);
-int socketInit(int port);
+int socketInit(std::string ip, int port);
