@@ -28,9 +28,30 @@ static int callback(void *NotUsed,  int argc, char **argv, char **azColName){
 }
 
 // Function to initialize and open database
-int dbInit(sqlite3 *&db, const std::string &passwd){
+int dbInit(sqlite3 *&db, const std::string configPath){
+    //grab database name and password from json setup file
+    std::ifstream configFile(configPath);
+    if(!configFile.is_open()){
+        std::cerr << "[ERROR] Failed to open config file: " << configPath << std::endl;
+        return(-1);
+    }
+
+    nlohmann::json config;
+    try {
+        configFile >> config;
+    }catch(const nlohmann::json::parse_error& e){
+        std::cerr << "[ERROR] Failed to parse JSON config: "<< e.what() << std::endl;
+        return(-1);
+    }
+
+    std::string dbName = config.value("database_name", "biota.db");
+    std::string dbPwd = config.value("database_password", "");
+
+    if(dbPwd.empty()){
+        std::cerr << "[WARNING] Database password is empty!\n";
+    }
     // Open database file
-    int rc = sqlite3_open("biota_encrypted.db", &db);
+    int rc = sqlite3_open(dbName.c_str(), &db);
     if(rc){
         std::cerr << "[ERROR] Failed to open database: " << sqlite3_errmsg16(db) << std::endl;
         return (-1);
@@ -38,7 +59,7 @@ int dbInit(sqlite3 *&db, const std::string &passwd){
     std::cout << "[SYSTEM] Database successfully opened!\n";
 
     // Set encryption key
-    std::string pragma = "PRAGMA key = '" + passwd + "';";
+    std::string pragma = "PRAGMA key = '" + dbPwd + "';";
     char *errMsg = nullptr;
     rc = sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, &errMsg);
     if(rc != SQLITE_OK){

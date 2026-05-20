@@ -21,7 +21,7 @@ class DataBiota{
 
 
 static int callback(void *NotUsed,  int argc, char **argv, char **azColName);
-int dbInit(sqlite3 *&db, const std::string &passwd);
+int dbInit(sqlite3 *&db, const std::string configPath = "setup.json");
 void addData(sqlite3* db, const DataBiota& data);
 void exportJSON(sqlite3* db);
 void cleanDb(sqlite3* db);

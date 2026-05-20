@@ -66,7 +66,7 @@ int main(){
     int port = 9420;
     std::string ip = "127.0.0.1";
 
-    dbInit(db, pwd);
+    dbInit(db);
     cleanDb(db);
     
     int serverSock = socketInit(ip, port);
@@ -80,13 +80,14 @@ int main(){
     char buffer[1024];
     int frame = 1, obj = 1, count = 1;
     while(true){
-        int id, flag;
+        int id;
         double lat, lon;
         float depth;
         std::string label = labelArr[rand()%5];
         float conf;
         std::string filename;
         int bytes_receive = recv(clientSock, buffer, sizeof(buffer)-1, 0);
+        std::string flag;
 
         if(bytes_receive == 0){
             std::cout << "client disconnected\n";
@@ -117,9 +118,9 @@ int main(){
             obj++;
         }
         if(conf<0.5){
-            flag = 1;
+            flag = "TIDAK YAKIN";
         }
-        else flag=0;
+        else flag="YAKIN";
         DataBiota data(id, lat, lon, depth, label, conf, flag, filename);
         addData(db, data);
     }

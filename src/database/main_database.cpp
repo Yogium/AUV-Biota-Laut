@@ -11,9 +11,9 @@ using json = nlohmann::json;
 
 int main() {
     sqlite3 *db;
-    std::string pwd = "test";
+    //std::string pwd = "test_pwd";
 
-    if (dbInit(db, pwd) != 0) {
+    if (dbInit(db) != 0) {
         std::cerr << "[ERROR] Failed to initialize database. Exiting..." << std::endl;
         return -1;
     }
