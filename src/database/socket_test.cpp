@@ -23,7 +23,7 @@ int main() {
     // 2. Set up the server address (localhost on port 9420)
     sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(9420);
+    server_addr.sin_port = htons(8080);
     inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
 
     // 3. Connect to your server

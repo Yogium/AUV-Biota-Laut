@@ -121,7 +121,8 @@ int main(){
             flag = "TIDAK YAKIN";
         }
         else flag="YAKIN";
-        DataBiota data(id, lat, lon, depth, label, conf, flag, filename);
+        std::string time;
+        DataBiota data(id, time, lat, lon, depth, label, conf, flag, filename);
         addData(db, data);
     }
 

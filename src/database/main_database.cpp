@@ -65,7 +65,7 @@ int main() {
                 if (payload.contains("metadata") && payload["metadata"].is_array()) {
                     for (const auto& item : payload["metadata"]) {
                         // Extract fields 
-                        int id = item["ID"].get<int>();
+                        std::string id = item["ID"].get<std::string>();
                         std::string time = item["time"].get<std::string>();
                         double lat = item["lat"].get<double>();
                         double lon = item["lon"].get<double>();

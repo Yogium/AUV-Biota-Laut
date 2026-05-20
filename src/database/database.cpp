@@ -14,7 +14,7 @@
 // Implement constructors
 DataBiota::DataBiota() : id(0), lat(0.0), lon(0.0), depth(0.0f), confidence(0.0f) {}
 
-DataBiota::DataBiota(int _id, std::string _time, double _lat, double _lon, float _depth, std::string _lbl, float _conf, std::string _flag, std::string _fname)
+DataBiota::DataBiota(std::string _id, std::string _time, double _lat, double _lon, float _depth, std::string _lbl, float _conf, std::string _flag, std::string _fname)
     : id(_id), timestamp(_time), lat(_lat), lon(_lon), depth(_depth), label(_lbl), confidence(_conf), flag(_flag), filename(_fname) {
 }
 
@@ -73,7 +73,7 @@ int dbInit(sqlite3 *&db, const std::string configPath){
     // Ensure table exists
     const char *createTableSQL = 
         "CREATE TABLE IF NOT EXISTS biota_laut("
-        "id INTEGER PRIMARY KEY, "
+        "id TEXT PRIMARY KEY, "
         "time TEXT NOT NULL, "
         "latitude DOUBLE NOT NULL, "
         "longitude DOUBLE NOT NULL, "
@@ -108,7 +108,7 @@ void addData(sqlite3* db, const DataBiota& data){
     }
 
     //binding values
-    sqlite3_bind_int(stmt, 1, data.id);
+    sqlite3_bind_text(stmt, 1, data.id.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, data.timestamp.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_double(stmt, 3, data.lat);
     sqlite3_bind_double(stmt, 4, data.lon);
@@ -138,7 +138,7 @@ void exportJSON(sqlite3* db){
     // Fetch each row and built a json object
     while(sqlite3_step(stmt) == SQLITE_ROW){
         nlohmann::json obj;
-        obj["id"] = sqlite3_column_int(stmt, 0);
+        obj["id"] = std::string((const char*)sqlite3_column_text(stmt, 0));
         obj["time"] = std::string((const char*)sqlite3_column_text(stmt, 1));
         obj["latitude"] = sqlite3_column_double(stmt, 2);
         obj["longitude"] = sqlite3_column_double(stmt, 3);
