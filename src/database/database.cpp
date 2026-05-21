@@ -45,8 +45,12 @@ int dbInit(sqlite3 *&db, const std::string configPath){
     }
 
     std::string dbName = config.value("database_name", "biota.db");
-    std::string dbPwd = config.value("database_password", "");
+    // std::string dbPwd = config.value("database_password", "");
     configFile.close();
+
+    std::string dbPwd;
+    std::cout << "[SYSTEM] Enter password for database " << dbName <<": ";
+    std::getline(std::cin, dbPwd);
 
     if(dbPwd.empty()){
         std::cerr << "[WARNING] Database password is empty!\n";

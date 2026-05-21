@@ -7,19 +7,19 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <nlohmann/json.hpp>
+#include <chrono> // Added for high-resolution timing
 
 using json = nlohmann::json;
 
 int main() {
     sqlite3 *db;
-    //std::string pwd = "test_pwd";
 
     if (dbInit(db) != 0) {
         std::cerr << "[ERROR] Failed to initialize database. Exiting..." << std::endl;
         return -1;
     }
 
-    //check for reset table and export flags
+    // Check for reset table and export flags
     const std::string configPath = "setup.json";
     std::ifstream configFile(configPath);
     if(!configFile.is_open()){
@@ -42,6 +42,19 @@ int main() {
     if(clean_flag == "true"){
         cleanDb(db);
     }
+
+    // --- NEW: Initialize the timing log file ---
+    std::ofstream time_log("db_insert_times.csv", std::ios::app);
+    if (!time_log.is_open()) {
+        std::cerr << "[WARNING] Could not open db_insert_times.csv for logging." << std::endl;
+    } else {
+        // Write CSV header if the file is empty
+        time_log.seekp(0, std::ios::end);
+        if (time_log.tellp() == 0) {
+            time_log << "timestamp_sys,biota_id,label,insert_time_us\n";
+        }
+    }
+    // -------------------------------------------
 
     // Initialize TCP server
     int server_fd = socketInit("127.0.0.1", 8080);
@@ -76,20 +89,16 @@ int main() {
         temp_buf[bytes_read] = '\0';
         stream_buffer += temp_buf;
 
-        // Process data line by line to ensure we capture complete JSON objects
         size_t pos;
         while ((pos = stream_buffer.find('\n')) != std::string::npos) {
             std::string json_line = stream_buffer.substr(0, pos);
             stream_buffer.erase(0, pos + 1);
 
             try {
-                // Parse the JSON payload
                 json payload = json::parse(json_line);
                 
-                // Extract detection metadata
                 if (payload.contains("metadata") && payload["metadata"].is_array()) {
                     for (const auto& item : payload["metadata"]) {
-                        // Extract fields 
                         std::string id = item["ID"].get<std::string>();
                         std::string time = item["time"].get<std::string>();
                         double lat = item["lat"].get<double>();
@@ -100,11 +109,29 @@ int main() {
                         std::string flag = item["flag"].get<std::string>();
                         std::string filename = item["filename"].get<std::string>();
 
-                        // Construct object and insert to SQLite
                         DataBiota biota(id, time, lat, lon, depth, label, conf, flag, filename);
+                        
+                        // --- NEW: Timing block starts here ---
+                        auto start_time = std::chrono::high_resolution_clock::now();
+                        
                         addData(db, biota);
                         
-                        std::cout << "[DB] Inserted: " << label << " (" << conf * 100 << "%) at depth " << depth << "m" << std::endl;
+                        auto end_time = std::chrono::high_resolution_clock::now();
+                        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+                        // -------------------------------------
+                        
+                        // Print to screen
+                        std::cout << "[DB] Inserted: " << label 
+                                  << " (" << conf * 100 << "%) at depth " << depth << "m. "
+                                  << "Insert time: " << duration << " us" << std::endl;
+
+                        // Write to CSV log file
+                        if (time_log.is_open()) {
+                            time_log << time << "," 
+                                     << id << "," 
+                                     << label << "," 
+                                     << duration << "\n";
+                        }
                     }
                 }
                 
@@ -113,10 +140,15 @@ int main() {
             }
         }
     }
+    
     if(export_flag == "true"){
         exportJSON(db, exportPath);
     }
  
+    if (time_log.is_open()) {
+        time_log.close();
+    }
+    
     close(client_socket);
     close(server_fd);
     sqlite3_close(db);
