@@ -3,6 +3,8 @@ import base64
 import cv2
 import socket
 import json
+import subprocess
+import os
 
 # Import modules
 from areaCheck import load_boundaries, is_in_area
@@ -22,6 +24,9 @@ PWM_VAL = 64
 # Time interval
 MONITOR_INTERVAL = 1.5
 NAV_INTERVAL = 0.2
+
+# Database execution
+DB_SERVER_EXEC = "./main_database.out"
 
 # Mission settings
 VEHICLE_ID = "auv01"
@@ -69,6 +74,18 @@ def main():
         print("[ERROR] Cannot start system without camera")
         return
     
+    # Initialize database server
+    db_process = None
+    if os.path.exists(DB_SERVER_EXEC):
+        print(f"[SYSTEM] Starting C++ database server: {DB_SERVER_EXEC}")
+        try:
+            db_process = subprocess.Popen([DB_SERVER_EXEC])
+            time.sleep(2) #give time to initialize db
+        except Exception as e:
+            print(f"[ERROR] Failed to start C++ server {e}")
+    else:
+        print(f"[ERROR] C++ executeable not found at {DB_SERVER_EXEC}.")
+
     # Initialize websocket client
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -190,6 +207,13 @@ def main():
         close_light_control()
         if 'sock' in locals():
             sock.close()
+
+        #Shuts down C++ server
+        if 'db_process' in locals() and db_process is not None:
+            print("[SYSTEM] Terminating C++ Database Server...")
+            db_process.terminate()
+            db_process.wait()
+        
         print("[SYSTEM] Shutdown complete")
                 
 if __name__ == "__main__":
