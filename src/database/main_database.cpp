@@ -1,6 +1,7 @@
 #include "database.h"
 #include <iostream>
 #include <string>
+#include <fstream>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,6 +17,30 @@ int main() {
     if (dbInit(db) != 0) {
         std::cerr << "[ERROR] Failed to initialize database. Exiting..." << std::endl;
         return -1;
+    }
+
+    //check for reset table and export flags
+    const std::string configPath = "setup.json";
+    std::ifstream configFile(configPath);
+    if(!configFile.is_open()){
+        std::cerr << "[ERROR] Failed to open config file: " << configPath << std::endl;
+        return(-1);
+    }
+
+    nlohmann::json config;
+    try {
+        configFile >> config;
+    }catch(const nlohmann::json::parse_error& e){
+        std::cerr << "[ERROR] Failed to parse JSON config: "<< e.what() << std::endl;
+        return(-1);
+    }
+    std::string export_flag = config.value("export_JSON", "true");
+    std::string clean_flag = config.value("clean_db", "false");
+    std::string exportPath = config.value("export_path", "biota_laut.json");
+    configFile.close();
+
+    if(clean_flag == "true"){
+        cleanDb(db);
     }
 
     // Initialize TCP server
@@ -88,7 +113,10 @@ int main() {
             }
         }
     }
-
+    if(export_flag == "true"){
+        exportJSON(db, exportPath);
+    }
+ 
     close(client_socket);
     close(server_fd);
     sqlite3_close(db);

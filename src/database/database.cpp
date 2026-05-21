@@ -46,6 +46,7 @@ int dbInit(sqlite3 *&db, const std::string configPath){
 
     std::string dbName = config.value("database_name", "biota.db");
     std::string dbPwd = config.value("database_password", "");
+    configFile.close();
 
     if(dbPwd.empty()){
         std::cerr << "[WARNING] Database password is empty!\n";
@@ -122,7 +123,7 @@ void addData(sqlite3* db, const DataBiota& data){
     sqlite3_finalize(stmt);
 }
 
-void exportJSON(sqlite3* db){
+void exportJSON(sqlite3* db, std::string filePath){
     // Declare array to hold records
     nlohmann::json jsonArr = nlohmann::json::array();
     
@@ -152,7 +153,7 @@ void exportJSON(sqlite3* db){
     sqlite3_finalize(stmt);
 
     // Write to a file in same directory
-    std::ofstream file("biota_export.json");
+    std::ofstream file(filePath);
     if(!file.is_open()){
         std::cerr << "[ERROR] Failed to open file" << std::endl;
         return;

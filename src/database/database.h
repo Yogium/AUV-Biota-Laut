@@ -23,6 +23,6 @@ class DataBiota{
 static int callback(void *NotUsed,  int argc, char **argv, char **azColName);
 int dbInit(sqlite3 *&db, const std::string configPath= "setup.json");
 void addData(sqlite3* db, const DataBiota& data);
-void exportJSON(sqlite3* db);
+void exportJSON(sqlite3* db, const std::string filePath= "biota_laut.json");
 void cleanDb(sqlite3* db);
 int socketInit(std::string ip, int port);
