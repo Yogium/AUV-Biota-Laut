@@ -141,7 +141,7 @@ def main():
                     b64_enhanced = base64.b64encode(buffer_enh).decode('utf-8')
                     save_image_local(enhanced_frame, filename, subfolder="preprocessed")
                     b64_detected = base64.b64encode(buffer_det).decode('utf-8')
-                    save_image_local()
+                    save_image_local(detect_frame, filename, subfolder="bounding_box")
 
                     # Build TCP payload
                     ws_message = {
