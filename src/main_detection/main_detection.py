@@ -11,6 +11,7 @@ from dataAcquisition import init_light_control, set_light_control, close_light_c
 from preProcess import enhance_underwater_pipeline
 from biotaDetection import load_yolo_model, run_yolo_model
 from auv_sim import simulate_auv
+from imageStorage import save_image_local
 
 # TensorRT engine path on Jetson AGX Orin
 YOLO_ENGINE_PATH = "/home/krbai/acquisition/biotadetect_11.engine"
@@ -138,7 +139,9 @@ def main():
                     _, buffer_det = cv2.imencode('.jpg', detect_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
 
                     b64_enhanced = base64.b64encode(buffer_enh).decode('utf-8')
+                    save_image_local(enhanced_frame, filename, subfolder="preprocessed")
                     b64_detected = base64.b64encode(buffer_det).decode('utf-8')
+                    save_image_local()
 
                     # Build TCP payload
                     ws_message = {
