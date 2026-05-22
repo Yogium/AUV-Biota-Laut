@@ -3,3 +3,8 @@
 *.key
 *.out
 .vscode
+
+#virtual environment
+.venv/
+auv_venv/
+__pycache__/
