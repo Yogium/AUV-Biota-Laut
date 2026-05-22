@@ -199,7 +199,7 @@ def main():
                 print("[SYSTEM] AUV has reached target position")
         
     except KeyboardInterrupt:
-        print("[SYSTEM] System aborted. Initiating shutdown sequence...")
+        print("\n[SYSTEM] System aborted. Initiating shutdown sequence...")
     finally:
         # Shutting down system
         print("[SYSTEM] Shutting down hardware...")
