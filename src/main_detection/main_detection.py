@@ -5,6 +5,7 @@ import socket
 import json
 import subprocess
 import os
+import getpass
 
 # Import modules
 from areaCheck import load_boundaries, is_in_area
@@ -77,9 +78,14 @@ def main():
     # Initialize database server
     db_process = None
     if os.path.exists(DB_SERVER_EXEC):
+        print("\n[SYSTEM] Database Initialization")
+        db_password = getpass.getpass(prompt="Enter the C++ Database password: ")
+
         print(f"[SYSTEM] Starting C++ database server: {DB_SERVER_EXEC}")
         try:
-            db_process = subprocess.Popen([DB_SERVER_EXEC])
+            db_process = subprocess.Popen([DB_SERVER_EXEC], stdin=subprocess.PIPE, text=True)
+            db_process.stdin.write(db_password+'\n')
+            db_process.stdin.flush()
             time.sleep(2) #give time to initialize db
         except Exception as e:
             print(f"[ERROR] Failed to start C++ server {e}")
