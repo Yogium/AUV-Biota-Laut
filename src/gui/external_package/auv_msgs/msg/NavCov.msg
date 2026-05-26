@@ -1,0 +1,5 @@
+geometry_msgs/Vector3 position_variance
+geometry_msgs/Vector3 orientation_variance
+geometry_msgs/Vector3 body_velocity_variance
+geometry_msgs/Vector3 ba_variance
+geometry_msgs/Vector3 bg_variance

@@ -1,0 +1,49 @@
+# NB: The object pose is given in camera frame, which is not the same as
+# image frame. Camera frame has x projected out of the lens, y is left,
+# and z is up.
+
+# Initial parameters:
+
+string view_image_id
+
+# Bounding box of the Target of Interest inside the view.
+sensor_msgs/RegionOfInterest roi
+float32 roi_rotation
+
+ImageFeature object_feature
+
+# Mode of operation. In continuous mode, the action will continue until 
+# cancelled by either the client or the server. In single shot mode, the action
+# will complete after a single image has been considered.
+int32 mode
+int32 MODE_SINGLE_SHOT = 1
+int32 MODE_CONTINUOUS = 2
+
+---
+
+# Final result:
+
+# True on error
+bool error
+int32 error_num
+int32 ERROR_BAD_MODE = 1
+int32 ERROR_OTHER = -1
+
+uint32 frame_count
+uint32 identified_frame_count
+
+---
+
+# Periodic feedback:
+
+# header.frame_id should be set to the frame of the camera.
+Header header
+
+# True if view is identified.
+bool identified
+
+# Indentified features of the object. ROS vehicle, camera, or view frame?
+ImageFeature feature
+
+# Pose of the object relative to the camera frame.
+geometry_msgs/PoseWithCovariance object_relative_to_camera

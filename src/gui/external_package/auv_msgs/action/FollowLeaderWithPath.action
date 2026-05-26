@@ -1,0 +1,24 @@
+# Initial parameters:
+
+# True if the expected path of the leader is provided.
+bool path_provided
+
+# Variable length array of lead vehicle trajectory poses.
+VehiclePose[] pose 
+
+---
+
+# Final result:
+
+bool success
+int32 error_num
+int32 ERROR_LOST_NAV=1
+int32 ERROR_LOST_LEADER=2
+int32 ERROR_OTHER=-1
+string error_string
+
+---
+
+# Periodic feedback:
+
+# TODO

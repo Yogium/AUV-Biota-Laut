@@ -1,0 +1,3 @@
+NED position
+RPY orientation
+

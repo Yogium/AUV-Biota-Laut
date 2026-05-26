@@ -1,0 +1,34 @@
+# Initial parameters:
+
+# Mode of operation. In continuous mode, the action will continue until 
+# cancelled by either the client or the server. In single shot mode, the action
+# will complete after a single image has been considered.
+int32 mode
+int32 MODE_SINGLE_SHOT = 1
+int32 MODE_CONTINUOUS = 2
+
+---
+
+# Final result:
+
+# True on error
+bool error
+int32 error_num
+int32 ERROR_BAD_MODE = 1
+int32 ERROR_OTHER = -1
+
+uint32 frame_count
+uint32 identified_frame_count
+
+---
+
+# Periodic feedback:
+
+# header.frame_id should be set to the frame of the camera.
+Header header
+
+# True if view is identified.
+bool identified
+
+# Pose of the dock  relative to the camera frame.
+geometry_msgs/PoseWithCovariance dock_relative_to_camera
