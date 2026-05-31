@@ -8,3 +8,7 @@
 .venv/
 auv_venv/
 __pycache__/
+
+#ignore unnecessary setup.json
+src/database/setup.json
+src/database/*.db
