@@ -4,7 +4,7 @@ import rospy
 import socket
 import json
 from sensor_msgs.msg import NavSatFix
-from gb_msgs.msg import Valeport_Altimeter
+from gb_navigation.msg import Valeport_Altimeter
 
 class TCPDirectStreamer:
     def __init__(self):
