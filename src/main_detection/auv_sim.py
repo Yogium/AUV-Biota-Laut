@@ -1,22 +1,10 @@
 import math
 import random
+from areaSetup import get_closest_corner
 
 METER_PER_DEGREE = 111133 # meter/degree in latitude
 WAVE_AMPLITUDE = 0.05 # 5cm of wave
 SENSOR_NOISE = 0.02 # 2cm of jitter
-
-# Obtain the closest corner from areaSetup.py to initiate target coordinate
-def get_closest_corner(lat, lon, bounds):
-    corners = [
-        (bounds['min_lat'], bounds['min_lon']), # Bottom-Left
-        (bounds['max_lat'], bounds['min_lon']), # Top-Left
-        (bounds['min_lat'], bounds['max_lon']), # Bottom-Right
-        (bounds['max_lat'], bounds['max_lon'])  # Top-Right
-    ]
-
-    # Calculate closest corner
-    closest_corner = min(corners, key=lambda c: math.hypot(c[0] - lat, c[1] - lon))
-    return closest_corner
 
 # Simulate AUV movement from initial location to closest corner
 def simulate_auv(cur_coord, bounds, speed, active, step_time, delay):
