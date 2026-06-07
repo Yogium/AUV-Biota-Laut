@@ -42,6 +42,8 @@ CONF_THRES = 0.6
 # WebSocket settings
 TCP_IP = "127.0.0.1"
 TCP_PORT = 8080
+ROS_IP = "192.168.2.102"
+ROS_PORT = 9191
 
 # ========================================================
 # MAIN
@@ -103,6 +105,7 @@ def main():
     time.sleep(2)
     
     frame_count = 1
+    total_rows = 0
     system_active = False # Initially turned off
 
     try:
@@ -141,7 +144,7 @@ def main():
                     # Obtain current time
                     cur_time = time.strftime("%H:%M:%S")
 
-                    # Append data
+                    # Append detection data to JSON
                     detect_data = []
                     for det in detections:
                         row = {
@@ -166,7 +169,7 @@ def main():
                     b64_detected = base64.b64encode(buffer_det).decode('utf-8')
                     save_image_local(detect_frame, filename, subfolder="bounding_box")
 
-                    # Build TCP payload
+                    # Build JSON message sent through TCP
                     ws_message = {
                         "filename": filename,
                         "metadata": detect_data,
@@ -180,7 +183,10 @@ def main():
                     try:
                         tcp_message = json.dumps(ws_message) + "\n"
                         sock.sendall(tcp_message.encode('utf-8'))
+                        #counter for how many rows of data is sent
+                        total_rows += len(detect_data)
                         print(f"[SYSTEM] Data {filename} is sent via WebSocket | Processing Time: {total_time:.3f}")
+                    
                     except Exception as e:
                         print(f"[ERROR] Failed to send {filename}: {e}")
 
@@ -218,8 +224,8 @@ def main():
         if 'db_process' in locals() and db_process is not None:
             print("[SYSTEM] Terminating C++ Database Server...")
             db_process.terminate()
-            db_process.wait()
-        
+            db_process.wait() 
+        print(f"[SYSTEM] Total rows of data sent to database: {total_rows}")
         print("[SYSTEM] Shutdown complete")
                 
 if __name__ == "__main__":
