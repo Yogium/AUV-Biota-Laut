@@ -1,5 +1,7 @@
 import json
+import math
 
+# Setup the monitoring zone based on input coordinates
 def area_setup():
     print("\n[SYSTEM] Configure Monitoring Zone")
     try: 
@@ -21,5 +23,18 @@ def area_setup():
         with open("m_bounds.json", "w") as outfile:
             json.dump(bounds, outfile, indent=4)
         print("[SYSTEM] Monitoring zone is saved to m_bounds.json")
-    except Exception as e:
-        print(f"[ERROR] Monitoring zone cannot be made: {e}")
+    except Exception as err:
+        print(f"[ERROR] Monitoring zone cannot be made: {err}")
+
+# Obtain the closest corner from areaSetup.py to initiate target coordinate
+def get_closest_corner(lat, lon, bounds):
+    corners = [
+        (bounds['min_lat'], bounds['min_lon']), # Bottom-Left
+        (bounds['max_lat'], bounds['min_lon']), # Top-Left
+        (bounds['min_lat'], bounds['max_lon']), # Bottom-Right
+        (bounds['max_lat'], bounds['max_lon'])  # Top-Right
+    ]
+
+    # Calculate closest corner
+    closest_corner = min(corners, key=lambda c: math.hypot(c[0] - lat, c[1] - lon))
+    return closest_corner
