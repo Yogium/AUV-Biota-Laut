@@ -64,10 +64,10 @@ int dbInit(sqlite3 *&db, const std::string configPath){
     std::cout << "[SYSTEM] Database successfully opened!\n";
 
     // Set encryption key
-    // std::string pragma = "PRAGMA key = '" + dbPwd + "';";
+    std::string pragma = "PRAGMA key = '" + dbPwd + "';";
     char *errMsg = nullptr;
-    // rc = sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, &errMsg);
-    rc = sqlite3_key(db, dbPwd.c_str(), dbPwd.size());
+    rc = sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, &errMsg);
+    // rc = sqlite3_key(db, dbPwd.c_str(), dbPwd.size());
     if(rc != SQLITE_OK){
         std::cerr << "[ERROR] Error setting encryption key: " << sqlite3_errmsg(db) << std::endl;
         // sqlite3_free(errMsg);
