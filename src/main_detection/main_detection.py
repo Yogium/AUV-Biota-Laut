@@ -102,13 +102,13 @@ def main():
     else:
         print(f"[ERROR] C++ executeable not found at {DB_SERVER_EXEC}.")
 
-    # Initialize websocket client
+    # Initialize socket client
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.connect((TCP_IP, TCP_PORT))
-        print("[SYSTEM] Connected via WebSocket")
+        print("[SYSTEM] Connected via Socket")
     except Exception as err:
-        print(f"[ERROR] Connection failed: {err}")
+        print(f"[ERROR] Socket Connection failed: {err}")
     
     time.sleep(2)
     
@@ -131,7 +131,7 @@ def main():
             
             if is_in_area(cur_lat, cur_lon, bounds):
                 if not system_active:
-                    print("[SYSTEM] AUV is entering monitoring zone. Activating marine biota detection system")
+                    print("[SYSTEM] AUV is inside of monitoring zone. Turning on marine biota monitoring system...")
                     if cboard_ready:
                         set_light_control(PWM_VAL)
                     system_active = True
@@ -187,13 +187,13 @@ def main():
                         }
                     }
 
-                    # Send over to websocket
+                    # Send over to socket
                     try:
                         tcp_message = json.dumps(ws_message) + "\n"
                         sock.sendall(tcp_message.encode('utf-8'))
                         #counter for how many rows of data is sent
                         total_rows += len(detect_data)
-                        print(f"[SYSTEM] Data {filename} is sent via WebSocket | Processing Time: {total_time:.3f}")
+                        print(f"[SYSTEM] Data {filename} is sent via Socket | Processing Time: {total_time:.3f}")
                     
                     except Exception as e:
                         print(f"[ERROR] Failed to send {filename}: {e}")
