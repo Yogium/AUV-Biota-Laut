@@ -1,4 +1,15 @@
 {
+    "engine_path": "/home/krbai/acquisition/biotadetect_11.engine",
+    "pwm_val": 64,
+    "monitor_interval": 1.5,
+    "nav_interval": 1,
+    "vehicle_id": 1,
+    "mission_id": 1,
+    "init_coord": [-7.701000, 108.654000, -5],
+    "auv_speed": 2,
+    "nav_active": true,
+    "conf_threshold": 0.7,
+    
     "database_name": "biota_encrypted.db",
     "database_password": "test_pwd",
     "image_folder":"media/krbai/images",

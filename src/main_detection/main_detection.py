@@ -6,6 +6,7 @@ import json
 import subprocess
 import os
 import getpass
+import sys
 
 # Import modules
 from areaCheck import load_boundaries, is_in_area
@@ -16,28 +17,8 @@ from biotaDetection import load_yolo_model, run_yolo_model
 from auv_sim import simulate_auv
 from imageStorage import save_image_local
 
-# TensorRT engine path on Jetson AGX Orin
-YOLO_ENGINE_PATH = "/home/krbai/acquisition/biotadetect_11.engine"
-
-# PWM value for light
-PWM_VAL = 64
-
-# Time interval
-MONITOR_INTERVAL = 1.5
-NAV_INTERVAL = 0.2
-
 # Database execution
 DB_SERVER_EXEC = "./main_database.out"
-
-# Mission settings
-VEHICLE_ID = "auv01"
-MISSION_ID = "ms01"
-INIT_COORD = -7.701000, 108.654000, -5
-AUV_SPEED = 2.0 # m/s
-NAV_ACTIVE = True # Active
-
-# Confidence threshold
-CONF_THRES = 0.6
 
 # WebSocket settings
 TCP_IP = "127.0.0.1"
@@ -46,12 +27,39 @@ ROS_IP = "192.168.2.102"
 ROS_PORT = 9191
 
 # ========================================================
+# SETUP
+# ========================================================
+CONFIG_PATH = "setup.json"
+
+try:
+    with open(CONFIG_PATH, 'r') as setup:
+        config = json.load(setup)
+except Exception as e:
+    print(f"[ERROR] Failed to load {CONFIG_PATH}")
+    sys.exit(1) # Abort mission
+
+# YOLO engine path
+YOLO_ENGINE_PATH = config.get("engine_path")
+# PWM value
+PWM_VAL = config.get("pwm_val")
+# Time intervals
+MONITOR_INTERVAL = config.get("monitor_interval")
+NAV_INTERVAL = config.get("nav_interval")
+# Mission settings
+VEHICLE_ID = f"auv{config.get("vehicle_id"):02d}"
+MISSION_ID = f"auv{config.get("mission_id"):02d}"
+INIT_COORD = tuple(config.get("init_coord"))
+AUV_SPEED = config.get("auv_speed")
+NAV_ACTIVE = config.get("nav_active")
+CONF_THRES = config.get("conf_threshold")
+
+# ========================================================
 # MAIN
 # ========================================================
 
 def main():
     print("\n" + "="*50)
-    print("\n    AUV MARINE BIOTA MONITORING SYSTEM")
+    print("\n       AUV MARINE BIOTA MONITORING SYSTEM")
     print("\n" + "="*50)
 
     # Monitoring zone setup using areaSetup
@@ -220,7 +228,7 @@ def main():
         if 'sock' in locals():
             sock.close()
 
-        #Shuts down C++ server
+        # Shuts down C++ server
         if 'db_process' in locals() and db_process is not None:
             print("[SYSTEM] Terminating C++ Database Server...")
             db_process.terminate()
