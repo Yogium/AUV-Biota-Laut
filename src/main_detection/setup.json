@@ -10,8 +10,8 @@
     "nav_active": true,
     "conf_threshold": 0.7,
     
-    "database_name": "biota_encrypted.db",
-    "database_password": "test_pwd",
+    "database_name": "~/microsd/biota_encrypted.db",
+    "database_password": "1234",
     "image_folder":"media/krbai/images",
     "export_JSON":"true" ,
     "export_path":"media/krbai/biota_laut.json",

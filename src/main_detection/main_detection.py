@@ -46,8 +46,8 @@ PWM_VAL = config.get("pwm_val")
 MONITOR_INTERVAL = config.get("monitor_interval")
 NAV_INTERVAL = config.get("nav_interval")
 # Mission settings
-VEHICLE_ID = f"auv{config.get("vehicle_id"):02d}"
-MISSION_ID = f"auv{config.get("mission_id"):02d}"
+VEHICLE_ID = f"auv{config.get('vehicle_id'):02d}"
+MISSION_ID = f"auv{config.get('mission_id'):02d}"
 INIT_COORD = tuple(config.get("init_coord"))
 AUV_SPEED = config.get("auv_speed")
 NAV_ACTIVE = config.get("nav_active")
